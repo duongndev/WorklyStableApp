@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,30 +7,94 @@ import {
   TouchableOpacity,
   Dimensions,
   RefreshControl,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { useDispatch } from 'react-redux';
 import StatCard from '../../components/common/StatCard';
 import MenuItem from '../../components/common/MenuItem';
+import { getAdminDashboardStatsApi } from '../../api/admin.api';
 
 const { width } = Dimensions.get('window');
 
 const AdminDashboardScreen = ({ navigation }) => {
-  const dispatch = useDispatch();
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const insets = useSafeAreaInsets();
 
   const [stats, setStats] = useState({
-    pendingLeaveRequests: 0,
-    pendingOvertimeRequests: 0,
-    totalEmployees: 0,
-    todayAttendance: 0,
+    users: { total: 0, employees: 0, admins: 0, managers: 0, active: 0 },
+    attendance: { checkedIn: 0, late: 0, absent: 0 },
+    leaves: { pending: 0, approved: 0, rejected: 0, thisMonth: 0 },
+    overtime: { pending: 0, approved: 0, rejected: 0, totalHoursThisMonth: 0 },
+    notifications: { total: 0, unread: 0, thisWeek: 0 },
   });
 
-  const onRefresh = async () => {
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      setError(null);
+      const response = await getAdminDashboardStatsApi();
+      if (response.success && response.data) {
+        const data = response.data;
+        setStats({
+          users: {
+            total: data.users?.total || 0,
+            employees: data.users?.employees || 0,
+            admins: data.users?.admins || 0,
+            managers: data.users?.managers || 0,
+            active: data.users?.active || 0,
+          },
+          attendance: {
+            checkedIn: data.attendance?.checkedIn || 0,
+            late: data.attendance?.late || 0,
+            absent: data.attendance?.absent || 0,
+          },
+          leaves: {
+            pending: data.leaves?.pending || 0,
+            approved: data.leaves?.approved || 0,
+            rejected: data.leaves?.rejected || 0,
+            thisMonth: data.leaves?.thisMonth || 0,
+          },
+          overtime: {
+            pending: data.overtime?.pending || 0,
+            approved: data.overtime?.approved || 0,
+            rejected: data.overtime?.rejected || 0,
+            totalHoursThisMonth: data.overtime?.totalHoursThisMonth || 0,
+          },
+          notifications: {
+            total: data.notifications?.total || 0,
+            unread: data.notifications?.unread || 0,
+            thisWeek: data.notifications?.thisWeek || 0,
+          },
+        });
+      }
+    } catch (err) {
+      console.log('Error fetching dashboard stats:', err);
+      setError('Không thể tải dữ liệu. Vui lòng thử lại.');
+      // Fallback data for demo
+      setStats({
+        users: { total: 25, employees: 20, admins: 2, managers: 3, active: 23 },
+        attendance: { checkedIn: 23, late: 1, absent: 2 },
+        leaves: { pending: 3, approved: 15, rejected: 2, thisMonth: 18 },
+        overtime: { pending: 2, approved: 10, rejected: 1, totalHoursThisMonth: 45 },
+        notifications: { total: 50, unread: 5, thisWeek: 12 },
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  };
+  useEffect(() => {
+    fetchDashboardStats();
+  }, [fetchDashboardStats]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchDashboardStats();
+    setRefreshing(false);
+  }, [fetchDashboardStats]);
 
 
   const menuItems = [
@@ -39,16 +103,16 @@ const AdminDashboardScreen = ({ navigation }) => {
       title: 'Đơn xin nghỉ phép',
       icon: 'event-busy',
       color: '#EF4444',
-      count: stats.pendingLeaveRequests,
-      screen: 'LeaveRequestsList',
+      count: stats.leaves.pending,
+      screen: 'AdminLeaveManagement',
     },
     {
       id: 2,
       title: 'Đơn làm thêm giờ',
       icon: 'access-time',
       color: '#F59E0B',
-      count: stats.pendingOvertimeRequests,
-      screen: 'OvertimeRequestsList',
+      count: stats.overtime.pending,
+      screen: 'AdminOvertimeManagement',
     },
     {
       id: 3,
@@ -68,6 +132,29 @@ const AdminDashboardScreen = ({ navigation }) => {
     },
   ];
 
+  // Loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centerContent]} edges={['bottom']}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+        <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state with retry
+  if (error && stats.totalEmployees === 0) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centerContent]} edges={['bottom']}>
+        <Icon name="error-outline" size={64} color="#EF4444" />
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchDashboardStats}>
+          <Text style={styles.retryButtonText}>Thử lại</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
@@ -79,6 +166,13 @@ const AdminDashboardScreen = ({ navigation }) => {
         </View>
       </View>
 
+      {error && (
+        <View style={styles.errorBanner}>
+          <Icon name="warning" size={20} color="#F59E0B" />
+          <Text style={styles.errorBannerText}>{error}</Text>
+        </View>
+      )}
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -86,22 +180,35 @@ const AdminDashboardScreen = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         showsVerticalScrollIndicator={false}
-
       >
         <View style={styles.statsContainer}>
           <Text style={styles.sectionTitle}>Thống kê nhanh</Text>
           <View style={styles.statsRow}>
             <StatCard
               title="Nhân viên"
-              value={stats.totalEmployees}
+              value={stats.users.employees}
               icon="account-group"
               color="#8B5CF6"
             />
             <StatCard
-              title="Chấm công hôm nay"
-              value={stats.todayAttendance}
+              title="Đã check-in"
+              value={stats.attendance.checkedIn}
               icon="account-check"
               color="#06B6D4"
+            />
+          </View>
+          <View style={[styles.statsRow, { marginTop: 12 }]}>
+            <StatCard
+              title="Đi muộn"
+              value={stats.attendance.late}
+              icon="alarm"
+              color="#F59E0B"
+            />
+            <StatCard
+              title="Vắng mặt"
+              value={stats.attendance.absent}
+              icon="account-off"
+              color="#EF4444"
             />
           </View>
         </View>
@@ -117,35 +224,6 @@ const AdminDashboardScreen = ({ navigation }) => {
           ))}
         </View>
 
-        <View style={styles.quickActionsContainer}>
-          <Text style={styles.sectionTitle}>Thao tác nhanh</Text>
-          <View style={styles.quickActionsRow}>
-            <TouchableOpacity
-              style={[styles.quickActionButton, { backgroundColor: '#FEE2E2' }]}
-              onPress={() => navigation.navigate('LeaveRequestsList')}
-              activeOpacity={0.8}
-            >
-              <Icon name="event-busy" size={20} color="#EF4444" />
-              <Text style={styles.quickActionText}>Nghỉ phép</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.quickActionButton, { backgroundColor: '#FEF3C7' }]}
-              onPress={() => navigation.navigate('OvertimeRequestsList')}
-              activeOpacity={0.8}
-            >
-              <Icon name="access-time" size={20} color="#F59E0B" />
-              <Text style={styles.quickActionText}>Làm thêm</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.quickActionButton, { backgroundColor: '#DBEAFE' }]}
-              onPress={() => navigation.navigate('AdminWorkSchedule')}
-              activeOpacity={0.8}
-            >
-              <Icon name="calendar-today" size={20} color="#3B82F6" />
-              <Text style={styles.quickActionText}>Lịch làm</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -155,6 +233,49 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginHorizontal: 32,
+    fontWeight: '500',
+  },
+  retryButton: {
+    backgroundColor: '#4F46E5',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  errorBannerText: {
+    fontSize: 14,
+    color: '#92400E',
+    fontWeight: '500',
   },
   header: {
     backgroundColor: '#4F46E5',

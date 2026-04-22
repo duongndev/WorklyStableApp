@@ -24,10 +24,14 @@ import CreateLeaveScreen from '../screens/employee/leave/CreateLeaveScreen';
 
 // Admin Screens
 import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
+import AdminLeaveManagementScreen from '../screens/admin/AdminLeaveManagementScreen';
 import LeaveRequestsListScreen from '../screens/admin/LeaveRequestsListScreen';
 import LeaveRequestDetailScreenAdmin from '../screens/admin/LeaveRequestDetailScreen';
 import OvertimeRequestsListScreen from '../screens/admin/OvertimeRequestsListScreen';
 import OvertimeRequestDetailScreenAdmin from '../screens/admin/OvertimeRequestDetailScreen';
+import AdminOvertimeHistoryScreen from '../screens/admin/OvertimeHistoryScreen';
+import AdminOvertimeDashboardScreen from '../screens/admin/OvertimeDashboardScreen';
+import AdminOvertimeManagementScreen from '../screens/admin/AdminOvertimeManagementScreen';
 import AttendanceHistoryScreenAdmin from '../screens/admin/AttendanceHistoryScreen';
 import WorkScheduleScreenAdmin from '../screens/admin/WorkScheduleScreen';
 
@@ -52,10 +56,14 @@ const SCREENS = [
   // Admin Screens
   { name: 'AdminMain', component: AdminBottomTabNavigator },
   { name: 'AdminDashboard', component: AdminDashboardScreen },
+  { name: 'AdminLeaveManagement', component: AdminLeaveManagementScreen },
   { name: 'LeaveRequestsList', component: LeaveRequestsListScreen },
-  { name: 'AdminLeaveDetail', component: LeaveRequestDetailScreenAdmin },
+  { name: 'LeaveRequestDetail', component: LeaveRequestDetailScreenAdmin },
   { name: 'OvertimeRequestsList', component: OvertimeRequestsListScreen },
-  { name: 'AdminDetailOT', component: OvertimeRequestDetailScreenAdmin },
+  { name: 'OvertimeRequestDetail', component: OvertimeRequestDetailScreenAdmin },
+  { name: 'AdminOvertimeManagement', component: AdminOvertimeManagementScreen },
+  { name: 'AdminOvertimeHistory', component: AdminOvertimeHistoryScreen },
+  { name: 'AdminOvertimeDashboard', component: AdminOvertimeDashboardScreen },
   { name: 'AttendanceHistory', component: AttendanceHistoryScreenAdmin },
   { name: 'AdminWorkSchedule', component: WorkScheduleScreenAdmin },
 ];

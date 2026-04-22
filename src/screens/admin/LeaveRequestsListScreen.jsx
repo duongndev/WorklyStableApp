@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,6 +7,7 @@ import {
   RefreshControl,
   Alert,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -16,6 +17,7 @@ import { useStatusFilter } from '../../hooks/useStatusFilter';
 import { LEAVE_STATUS_FILTERS } from '../../utils/filterConfigs';
 import AdminRequestCard from '../../components/admin/AdminRequestCard';
 import RejectModal from '../../components/admin/RejectModal';
+import { getAllLeaveRequestsApi, approveLeaveRequestApi, rejectLeaveRequestApi } from '../../api/admin.api';
 
 const LeaveRequestsListScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
@@ -23,8 +25,13 @@ const LeaveRequestsListScreen = ({ navigation }) => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const [leaveRequests, setLeaveRequests] = useState([
+  const [leaveRequests, setLeaveRequests] = useState([]);
+
+  // Fallback data for demo
+  const fallbackData = [
     {
       id: 1,
       employeeName: 'Nguyễn Văn A',
@@ -67,7 +74,29 @@ const LeaveRequestsListScreen = ({ navigation }) => {
       rejectedReason: 'Không đủ điều kiện nghỉ không lương',
       rejectedAt: '2024-03-17T16:45:00',
     },
-  ]);
+  ];
+
+  const fetchLeaveRequests = useCallback(async () => {
+    try {
+      setError(null);
+      const response = await getAllLeaveRequestsApi();
+      if (response.success) {
+        setLeaveRequests(response.data || []);
+      } else {
+        setLeaveRequests(fallbackData);
+      }
+    } catch (err) {
+      console.log('Error fetching leave requests:', err);
+      setError('Không thể tải dữ liệu. Hiển thị dữ liệu mẫu.');
+      setLeaveRequests(fallbackData);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLeaveRequests();
+  }, [fetchLeaveRequests]);
 
   // Use the custom hook for status filtering
   const {
@@ -85,12 +114,11 @@ const LeaveRequestsListScreen = ({ navigation }) => {
     return matchesSearch;
   });
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
-  }, []);
+    await fetchLeaveRequests();
+    setRefreshing(false);
+  }, [fetchLeaveRequests]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -110,7 +138,7 @@ const LeaveRequestsListScreen = ({ navigation }) => {
     }
   };
 
-  const handleApprove = (requestId) => {
+  const handleApprove = async (requestId) => {
     Alert.alert(
       'Xác nhận duyệt',
       'Bạn có chắc chắn muốn duyệt đơn xin nghỉ này?',
@@ -118,13 +146,19 @@ const LeaveRequestsListScreen = ({ navigation }) => {
         { text: 'Hủy', style: 'cancel' },
         {
           text: 'Duyệt',
-          onPress: () => {
-            setLeaveRequests(prev => prev.map(req =>
-              req.id === requestId
-                ? { ...req, status: 'approved', approvedBy: 'Admin', approvedAt: new Date().toISOString() }
-                : req
-            ));
-            Alert.alert('Thành công', 'Đơn xin nghỉ đã được duyệt');
+          onPress: async () => {
+            try {
+              await approveLeaveRequestApi(requestId);
+              setLeaveRequests(prev => prev.map(req =>
+                req.id === requestId
+                  ? { ...req, status: 'approved', approvedBy: 'Admin', approvedAt: new Date().toISOString() }
+                  : req
+              ));
+              Alert.alert('Thành công', 'Đơn xin nghỉ đã được duyệt');
+            } catch (err) {
+              console.log('Error approving leave request:', err);
+              Alert.alert('Lỗi', 'Không thể duyệt đơn. Vui lòng thử lại.');
+            }
           },
         },
       ]
@@ -136,28 +170,51 @@ const LeaveRequestsListScreen = ({ navigation }) => {
     setShowRejectModal(true);
   };
 
-  const confirmReject = () => {
+  const confirmReject = async () => {
     if (!rejectReason.trim()) {
       Alert.alert('Lỗi', 'Vui lòng nhập lý do từ chối');
       return;
     }
 
-    setLeaveRequests(prev => prev.map(req =>
-      req.id === selectedRequest.id
-        ? { ...req, status: 'rejected', rejectedBy: 'Admin', rejectedReason: rejectReason, rejectedAt: new Date().toISOString() }
-        : req
-    ));
-    
-    setShowRejectModal(false);
-    setRejectReason('');
-    setSelectedRequest(null);
-    Alert.alert('Thành công', 'Đơn xin nghỉ đã bị từ chối');
+    try {
+      await rejectLeaveRequestApi(selectedRequest.id, rejectReason);
+      setLeaveRequests(prev => prev.map(req =>
+        req.id === selectedRequest.id
+          ? { ...req, status: 'rejected', rejectedBy: 'Admin', rejectedReason: rejectReason, rejectedAt: new Date().toISOString() }
+          : req
+      ));
+      
+      setShowRejectModal(false);
+      setRejectReason('');
+      setSelectedRequest(null);
+      Alert.alert('Thành công', 'Đơn xin nghỉ đã bị từ chối');
+    } catch (err) {
+      console.log('Error rejecting leave request:', err);
+      Alert.alert('Lỗi', 'Không thể từ chối đơn. Vui lòng thử lại.');
+    }
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centerContent]} edges={['bottom']}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+        <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Header title="Đơn xin nghỉ phép" canGoBack />
       
+      {error && (
+        <View style={styles.errorBanner}>
+          <Icon name="warning" size={20} color="#F59E0B" />
+          <Text style={styles.errorBannerText}>{error}</Text>
+        </View>
+      )}
+
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
           <Icon name="search" size={20} color="#9CA3AF" />
@@ -221,6 +278,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  errorBannerText: {
+    fontSize: 14,
+    color: '#92400E',
+    fontWeight: '500',
   },
   searchContainer: {
     padding: 16,

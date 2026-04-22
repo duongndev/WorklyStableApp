@@ -1,22 +1,21 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
   View,
   FlatList,
-  TouchableOpacity,
   RefreshControl,
   Alert,
-  Modal,
   TextInput,
-  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Header from '../../components/common/Header';
-import StatusFilter from '../../components/admin/StatusFilter';
+import StatusFilter from '../../components/common/StatusFilter';
 import AdminRequestCard from '../../components/admin/AdminRequestCard';
 import RejectModal from '../../components/admin/RejectModal';
+import { getAllOvertimeRequestsApi, approveOvertimeRequestApi, rejectOvertimeRequestApi } from '../../api/admin.api';
 
 const OvertimeRequestsListScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
@@ -25,8 +24,13 @@ const OvertimeRequestsListScreen = ({ navigation }) => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [selectedRequest, setSelectedRequest] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const [overtimeRequests, setOvertimeRequests] = useState([
+  const [overtimeRequests, setOvertimeRequests] = useState([]);
+
+  // Fallback data for demo
+  const fallbackData = [
     {
       id: 1,
       employeeName: 'Nguyễn Văn A',
@@ -69,7 +73,29 @@ const OvertimeRequestsListScreen = ({ navigation }) => {
       rejectedReason: 'Không có thông báo trước và không được cấp trên duyệt',
       rejectedAt: '2024-03-17T18:45:00',
     },
-  ]);
+  ];
+
+  const fetchOvertimeRequests = useCallback(async () => {
+    try {
+      setError(null);
+      const response = await getAllOvertimeRequestsApi();
+      if (response.success) {
+        setOvertimeRequests(response.data || []);
+      } else {
+        setOvertimeRequests(fallbackData);
+      }
+    } catch (err) {
+      console.log('Error fetching overtime requests:', err);
+      setError('Không thể tải dữ liệu. Hiển thị dữ liệu mẫu.');
+      setOvertimeRequests(fallbackData);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchOvertimeRequests();
+  }, [fetchOvertimeRequests]);
 
   const filters = [
     { key: 'all', label: 'Tất cả', count: overtimeRequests.length },
@@ -78,12 +104,11 @@ const OvertimeRequestsListScreen = ({ navigation }) => {
     { key: 'rejected', label: 'Đã từ chối', count: overtimeRequests.filter(r => r.status === 'rejected').length },
   ];
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
-  }, []);
+    await fetchOvertimeRequests();
+    setRefreshing(false);
+  }, [fetchOvertimeRequests]);
 
   const filteredRequests = overtimeRequests.filter(request => {
     const matchesFilter = selectedFilter === 'all' || request.status === selectedFilter;
@@ -111,7 +136,7 @@ const OvertimeRequestsListScreen = ({ navigation }) => {
     }
   };
 
-  const handleApprove = (requestId) => {
+  const handleApprove = async (requestId) => {
     Alert.alert(
       'Xác nhận duyệt',
       'Bạn có chắc chắn muốn duyệt đơn làm thêm giờ này?',
@@ -119,13 +144,19 @@ const OvertimeRequestsListScreen = ({ navigation }) => {
         { text: 'Hủy', style: 'cancel' },
         {
           text: 'Duyệt',
-          onPress: () => {
-            setOvertimeRequests(prev => prev.map(req =>
-              req.id === requestId
-                ? { ...req, status: 'approved', approvedBy: 'Admin', approvedAt: new Date().toISOString() }
-                : req
-            ));
-            Alert.alert('Thành công', 'Đơn làm thêm giờ đã được duyệt');
+          onPress: async () => {
+            try {
+              await approveOvertimeRequestApi(requestId);
+              setOvertimeRequests(prev => prev.map(req =>
+                req.id === requestId
+                  ? { ...req, status: 'approved', approvedBy: 'Admin', approvedAt: new Date().toISOString() }
+                  : req
+              ));
+              Alert.alert('Thành công', 'Đơn làm thêm giờ đã được duyệt');
+            } catch (err) {
+              console.log('Error approving overtime request:', err);
+              Alert.alert('Lỗi', 'Không thể duyệt đơn. Vui lòng thử lại.');
+            }
           },
         },
       ]
@@ -137,28 +168,51 @@ const OvertimeRequestsListScreen = ({ navigation }) => {
     setShowRejectModal(true);
   };
 
-  const confirmReject = () => {
+  const confirmReject = async () => {
     if (!rejectReason.trim()) {
       Alert.alert('Lỗi', 'Vui lòng nhập lý do từ chối');
       return;
     }
 
-    setOvertimeRequests(prev => prev.map(req =>
-      req.id === selectedRequest.id
-        ? { ...req, status: 'rejected', rejectedBy: 'Admin', rejectedReason: rejectReason, rejectedAt: new Date().toISOString() }
-        : req
-    ));
-    
-    setShowRejectModal(false);
-    setRejectReason('');
-    setSelectedRequest(null);
-    Alert.alert('Thành công', 'Đơn làm thêm giờ đã bị từ chối');
+    try {
+      await rejectOvertimeRequestApi(selectedRequest.id, rejectReason);
+      setOvertimeRequests(prev => prev.map(req =>
+        req.id === selectedRequest.id
+          ? { ...req, status: 'rejected', rejectedBy: 'Admin', rejectedReason: rejectReason, rejectedAt: new Date().toISOString() }
+          : req
+      ));
+      
+      setShowRejectModal(false);
+      setRejectReason('');
+      setSelectedRequest(null);
+      Alert.alert('Thành công', 'Đơn làm thêm giờ đã bị từ chối');
+    } catch (err) {
+      console.log('Error rejecting overtime request:', err);
+      Alert.alert('Lỗi', 'Không thể từ chối đơn. Vui lòng thử lại.');
+    }
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centerContent]} edges={['bottom']}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+        <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Header title="Đơn làm thêm giờ" canGoBack />
       
+      {error && (
+        <View style={styles.errorBanner}>
+          <Icon name="warning" size={20} color="#F59E0B" />
+          <Text style={styles.errorBannerText}>{error}</Text>
+        </View>
+      )}
+
       <View style={styles.searchContainer}>
         <View style={styles.searchBar}>
           <Icon name="search" size={20} color="#9CA3AF" />
@@ -222,6 +276,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  errorBannerText: {
+    fontSize: 14,
+    color: '#92400E',
+    fontWeight: '500',
   },
   searchContainer: {
     padding: 16,

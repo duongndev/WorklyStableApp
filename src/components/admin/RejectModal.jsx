@@ -14,10 +14,12 @@ const RejectModal = ({
   visible,
   onClose,
   onConfirm,
-  rejectReason,
-  setRejectReason,
+  note,
+  setNote,
   title = 'Từ chối yêu cầu',
-  placeholder = 'Nhập lý do từ chối...',
+  placeholder = 'Nhập lý do...',
+  confirmButtonText = 'Xác nhận',
+  confirmButtonColor = '#EF4444',
 }) => {
   return (
     <Modal
@@ -38,8 +40,8 @@ const RejectModal = ({
             placeholderTextColor="#9CA3AF"
             multiline
             numberOfLines={4}
-            value={rejectReason}
-            onChangeText={setRejectReason}
+            value={note}
+            onChangeText={setNote}
           />
           <View style={styles.modalButtons}>
             <TouchableOpacity
@@ -49,10 +51,10 @@ const RejectModal = ({
               <Text style={styles.cancelButtonText}>Hủy</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.modalButton, styles.confirmButton]}
+              style={[styles.modalButton, { backgroundColor: confirmButtonColor }]}
               onPress={onConfirm}
             >
-              <Text style={styles.confirmButtonText}>Xác nhận</Text>
+              <Text style={styles.confirmButtonText}>{confirmButtonText}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -104,9 +106,6 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     backgroundColor: '#F3F4F6',
-  },
-  confirmButton: {
-    backgroundColor: '#EF4444',
   },
   cancelButtonText: {
     color: '#374151',

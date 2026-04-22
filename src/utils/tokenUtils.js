@@ -35,15 +35,20 @@ export const saveFCMToken = async token => {
   }
 };
 
-export const saveToken = async (accessToken, refreshToken) => {
+export const saveAccessToken = async (accessToken) => {
   try {
     await AsyncStorage.setItem('accessToken', accessToken);
-    if (refreshToken) {
-      await AsyncStorage.setItem('refreshToken', refreshToken);
-    }
-    console.log('Tokens đã được lưu thành công vào AsyncStorage');
   } catch (error) {
-    console.error('Error saving tokens:', error);
+    console.error('Error saving access token:', error);
+    throw error;
+  }
+};
+
+export const saveRefreshToken = async (refreshToken) => {
+  try {
+    await AsyncStorage.setItem('refreshToken', refreshToken);
+  } catch (error) {
+    console.error('Error saving refresh token:', error);
     throw error;
   }
 };

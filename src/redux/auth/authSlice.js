@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import { loginAction, logoutAction, getUserInfoAction, updateFCMTokenAction, refreshTokenAction } from './authAction';
-import { saveToken, removeToken } from '../../utils/tokenUtils';
+import { saveAccessToken, saveRefreshToken, removeToken } from '../../utils/tokenUtils';
 
 const initialState = {
   accessToken: null,
@@ -52,7 +52,10 @@ const authSlice = createSlice({
         
         // Lưu tokens vào AsyncStorage
         if (action.payload.accessToken) {
-          saveToken(action.payload.accessToken, action.payload.refreshToken);
+          saveAccessToken(action.payload.accessToken);
+        }
+        if (action.payload.refreshToken) {
+          saveRefreshToken(action.payload.refreshToken);
         }
       })
       .addCase(loginAction.rejected, (state, action) => {
@@ -139,7 +142,10 @@ const authSlice = createSlice({
         
         // Lưu tokens mới vào AsyncStorage
         if (action.payload.accessToken) {
-          saveToken(action.payload.accessToken, action.payload.refreshToken);
+          saveAccessToken(action.payload.accessToken);
+        }
+        if (action.payload.refreshToken) {
+          saveRefreshToken(action.payload.refreshToken);
         }
       })
       .addCase(refreshTokenAction.rejected, (state, action) => {

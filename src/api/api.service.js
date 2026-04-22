@@ -26,7 +26,6 @@ const processQueue = (error, token = null) => {
       prom.resolve(token);
     }
   });
-  
   failedQueue = [];
 };
 
@@ -49,78 +48,85 @@ axiosClient.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle token refresh
+// Response interceptor - refresh token on 401
 axiosClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const requestUrl = originalRequest?.url || '';
+    const isAuthEndpoint = requestUrl.includes('/auth/');
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      if (isRefreshing) {
-        // If already refreshing, queue the request
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
-        }).then(token => {
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          return axiosClient(originalRequest);
-        }).catch(err => {
-          return Promise.reject(err);
-        });
-      }
-
-      originalRequest._retry = true;
-      isRefreshing = true;
-
-      try {
-        const refreshToken = await getRefreshTokenFromStorage();
-        
-        if (!refreshToken) {
-          throw new Error('No refresh token available');
-        }
-
-        const response = await refreshTokenApi(refreshToken);
-        
-        if (response.success && response.accessToken) {
-          // Save new tokens
-          await saveToken(response.accessToken, response.refreshToken);
-          
-          // Update Redux store
-          if (storeInstance) {
-            storeInstance.dispatch({
-              type: 'auth/refreshToken/fulfilled',
-              payload: {
-                accessToken: response.accessToken,
-                refreshToken: response.refreshToken
-              }
-            });
-          }
-
-          // Process queued requests
-          processQueue(null, response.accessToken);
-          
-          // Retry original request
-          originalRequest.headers.Authorization = `Bearer ${response.accessToken}`;
-          return axiosClient(originalRequest);
-        } else {
-          throw new Error('Token refresh failed');
-        }
-      } catch (refreshError) {
-        // Refresh failed, logout user
-        processQueue(refreshError, null);
-        
-        if (storeInstance) {
-          storeInstance.dispatch({ type: 'auth/logoutUser' });
-        }
-        
-        await removeToken();
-        
-        return Promise.reject(refreshError);
-      } finally {
-        isRefreshing = false;
-      }
+    // Skip refresh token logic for auth endpoints
+    if (error.response?.status !== 401 || isAuthEndpoint) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    if (originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
+    if (isRefreshing) {
+      // Queue the request while refreshing
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      }).then(token => {
+        originalRequest.headers.Authorization = `Bearer ${token}`;
+        return axiosClient(originalRequest);
+      }).catch(err => {
+        return Promise.reject(err);
+      });
+    }
+
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    try {
+      const refreshToken = await getRefreshTokenFromStorage();
+
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await refreshTokenApi(refreshToken);
+
+      if (response.success && response.accessToken) {
+        // Save new tokens
+        await saveToken(response.accessToken, response.refreshToken);
+
+        // Update Redux store
+        if (storeInstance) {
+          storeInstance.dispatch({
+            type: 'auth/refreshToken/fulfilled',
+            payload: {
+              accessToken: response.accessToken,
+              refreshToken: response.refreshToken
+            }
+          });
+        }
+
+        // Process queued requests
+        processQueue(null, response.accessToken);
+
+        // Retry original request
+        originalRequest.headers.Authorization = `Bearer ${response.accessToken}`;
+        return axiosClient(originalRequest);
+      } else {
+        throw new Error('Token refresh failed');
+      }
+    } catch (refreshError) {
+      // Refresh failed, logout user
+      processQueue(refreshError, null);
+
+      if (storeInstance) {
+        storeInstance.dispatch({ type: 'auth/logoutUser' });
+      }
+
+      await removeToken();
+
+      return Promise.reject(refreshError);
+    } finally {
+      isRefreshing = false;
+    }
   }
 );
 

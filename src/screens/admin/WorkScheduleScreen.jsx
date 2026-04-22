@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -8,11 +8,13 @@ import {
   RefreshControl,
   Modal,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import Header from '../../components/common/Header';
+import { getAllWorkSchedulesApi } from '../../api/admin.api';
 
 const { width } = Dimensions.get('window');
 
@@ -32,6 +34,8 @@ const WorkScheduleScreen = ({ navigation }) => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedDaySchedule, setSelectedDaySchedule] = useState(null);
   const [viewMode, setViewMode] = useState('calendar'); // 'calendar' or 'list'
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [scheduleData, setScheduleData] = useState({
     '2024-03-20': [
@@ -86,6 +90,27 @@ const WorkScheduleScreen = ({ navigation }) => {
     ],
   });
 
+  const fetchWorkSchedules = useCallback(async () => {
+    try {
+      setError(null);
+      const response = await getAllWorkSchedulesApi();
+      if (response.success) {
+        // Transform data if needed
+        const schedules = response.data || {};
+        setScheduleData(schedules);
+      }
+    } catch (err) {
+      console.log('Error fetching work schedules:', err);
+      setError('Không thể tải dữ liệu lịch làm việc.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchWorkSchedules();
+  }, [fetchWorkSchedules]);
+
   const [employees] = useState([
     { id: 1, name: 'Nguyễn Văn A', department: 'Kỹ thuật', avatar: null },
     { id: 2, name: 'Trần Thị B', department: 'Nhân sự', avatar: null },
@@ -94,12 +119,11 @@ const WorkScheduleScreen = ({ navigation }) => {
     { id: 5, name: 'Hoàng Văn E', department: 'Kế toán', avatar: null },
   ]);
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
-  }, []);
+    await fetchWorkSchedules();
+    setRefreshing(false);
+  }, [fetchWorkSchedules]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -241,6 +265,16 @@ const WorkScheduleScreen = ({ navigation }) => {
 
   const markedDates = getMarkedDates();
 
+  // Loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centerContent]} edges={['bottom']}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+        <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Header 
@@ -254,6 +288,13 @@ const WorkScheduleScreen = ({ navigation }) => {
         ]}
       />
       
+      {error && (
+        <View style={styles.errorBanner}>
+          <Icon name="warning" size={20} color="#F59E0B" />
+          <Text style={styles.errorBannerText}>{error}</Text>
+        </View>
+      )}
+
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -357,6 +398,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  errorBannerText: {
+    fontSize: 14,
+    color: '#92400E',
+    fontWeight: '500',
   },
   header: {
     backgroundColor: '#4F46E5',
