@@ -20,7 +20,7 @@ export const getAdminDashboardStatsApi = async () => {
  */
 export const getAllLeaveRequestsApi = async (params = {}) => {
   try {
-    const response = await axiosClient.get('/admin/leave-requests', { params });
+    const response = await axiosClient.get('/admin/leave-requests/all', { params });
     return response.data;
   } catch (error) {
     console.log('Lỗi khi lấy danh sách đơn xin nghỉ:', error);
@@ -107,7 +107,7 @@ export const updateLeaveRequestStatusApi = async (id, { status, note }) => {
  */
 export const getAllOvertimeRequestsApi = async (params = {}) => {
   try {
-    const response = await axiosClient.get('/admin/overtime-requests', { params });
+    const response = await axiosClient.get('/admin/overtime-requests/all', { params });
     return response.data;
   } catch (error) {
     console.log('Lỗi khi lấy danh sách đơn làm thêm:', error);
@@ -169,7 +169,7 @@ export const getOvertimeDashboardApi = async (params = {}) => {
     const response = await axiosClient.get('/admin/overtime-requests/dashboard', { params });
     return response.data;
   } catch (error) {
-    console.log('Lỗi khi lấy dashboard thống kê làm thêm giờ:', error);
+    console.log('Lỗi khi lấy dashboard thống kê làm thêm giờ:', error);j
     throw error;
   }
 };

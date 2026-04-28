@@ -14,10 +14,13 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import StatusFilter from '../../common/StatusFilter';
+import AdminRequestCard from '../AdminRequestCard';
+import RejectModal from '../RejectModal';
 import { useStatusFilter } from '../../../hooks/useStatusFilter';
-import { OVERTIME_STATUS_FILTERS, OVERTIME_TYPE_FILTERS, getStatusColor, getStatusDisplay, getOvertimeTypeDisplay, formatHoursDisplay } from '../../../utils/overtimeConfigs';
+import { OVERTIME_STATUS_FILTERS, OVERTIME_TYPE_FILTERS, getStatusColor, getStatusDisplay, getOvertimeTypeDisplay, formatHoursDisplay, getOvertimeTypeIcon } from '../../../utils/overtimeConfigs';
 import {
   getOvertimeHistoryAction,
+  updateOvertimeRequestStatusAction,
   setPage,
 } from '../../../redux/adminOvertime/adminOvertimeAction';
 import { useDispatch } from 'react-redux';
@@ -29,6 +32,12 @@ const OvertimeHistoryTab = ({ historyData, pagination, onRefresh, refreshing, na
   const [searchQuery, setSearchQuery] = useState('');
   const [localLoading, setLocalLoading] = useState(false);
   const [selectedTypeFilter, setSelectedTypeFilter] = useState('all');
+
+  // Action modal states
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [actionNote, setActionNote] = useState('');
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [actionType, setActionType] = useState(null);
 
   const overtimeRequests = historyData?.overtimeRequests || [];
   const summary = historyData?.summary || {};
@@ -86,6 +95,73 @@ const OvertimeHistoryTab = ({ historyData, pagination, onRefresh, refreshing, na
     }
   };
 
+  // Handle approve
+  const handleApprove = useCallback((request) => {
+    setSelectedRequest(request);
+    setActionType('approve');
+    setActionNote('');
+    setShowActionModal(true);
+  }, []);
+
+  // Handle reject
+  const handleReject = useCallback((request) => {
+    setSelectedRequest(request);
+    setActionType('reject');
+    setActionNote('');
+    setShowActionModal(true);
+  }, []);
+
+  // Confirm action
+  const confirmAction = useCallback(() => {
+    if (!selectedRequest) return;
+
+    setLocalLoading(true);
+    setShowActionModal(false);
+
+    const status = actionType === 'approve' ? 'approved' : 'rejected';
+    const successMessage = actionType === 'approve' ? 'Đã duyệt đơn làm thêm giờ' : 'Đã từ chối đơn làm thêm giờ';
+
+    dispatch(updateOvertimeRequestStatusAction({
+      id: selectedRequest._id || selectedRequest.id,
+      status,
+      note: actionNote
+    }))
+      .unwrap()
+      .then(() => {
+        Alert.alert('Thành công', successMessage);
+        setActionNote('');
+        setSelectedRequest(null);
+        setActionType(null);
+        onRefresh();
+      })
+      .catch((error) => {
+        Alert.alert('Lỗi', error?.message || 'Không thể thực hiện thao tác');
+      })
+      .finally(() => {
+        setLocalLoading(false);
+      });
+  }, [dispatch, selectedRequest, actionNote, actionType, onRefresh]);
+
+  // Format request data for AdminRequestCard
+  const formatRequestData = (request) => {
+    const overtimeTypeDisplay = getOvertimeTypeDisplay(request.overtimeType);
+    const hoursDisplay = formatHoursDisplay(request.hoursWork);
+
+    return {
+      id: request._id || request.id,
+      employeeName: request.employeeInfo?.fullName || 'Không xác định',
+      employeeId: request.employeeInfo?._id?.slice(-6) || '',
+      department: request.employeeInfo?.department || 'Không xác định',
+      status: request.status,
+      overtimeType: overtimeTypeDisplay,
+      otDate: request.otDate,
+      hoursWork: request.hoursWork,
+      hoursDisplay: hoursDisplay,
+      reason: request.reason,
+      createdAt: request.createdAt,
+    };
+  };
+
   // Render history item
   const renderHistoryItem = ({ item }) => {
     const statusColor = getStatusColorValue(item.status);
@@ -93,6 +169,28 @@ const OvertimeHistoryTab = ({ historyData, pagination, onRefresh, refreshing, na
     const hoursDisplay = formatHoursDisplay(item.hoursWork);
     const statusText = getStatusDisplay(item.status);
 
+    // Use AdminRequestCard for pending items to show action buttons
+    if (item.status === 'pending') {
+      const formattedItem = formatRequestData(item);
+      const overtimeIcon = getOvertimeTypeIcon(item.overtimeType);
+
+      return (
+        <AdminRequestCard
+          item={formattedItem}
+          onPress={() => navigation.navigate('OvertimeRequestDetail', { requestId: item._id || item.id })}
+          onApprove={() => handleApprove(item)}
+          onReject={() => handleReject(item)}
+          details={[
+            { icon: overtimeIcon, text: formattedItem.overtimeType },
+            { icon: 'event', text: `Ngày: ${formattedItem.otDate}` },
+            { icon: 'schedule', text: `Số giờ: ${formattedItem.hoursDisplay}` },
+            { icon: 'description', text: formattedItem.reason, numberOfLines: 2 },
+          ]}
+        />
+      );
+    }
+
+    // Regular history card for non-pending items
     return (
       <TouchableOpacity
         style={styles.historyCard}
@@ -249,93 +347,113 @@ const OvertimeHistoryTab = ({ historyData, pagination, onRefresh, refreshing, na
   };
 
   return (
-    <FlatList
-      data={filteredRequests}
-      keyExtractor={(item) => item._id.toString()}
-      renderItem={renderHistoryItem}
-      contentContainerStyle={styles.container}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      onEndReached={loadMore}
-      onEndReachedThreshold={0.5}
-      ListFooterComponent={renderFooter}
-      ListHeaderComponent={
-        <View>
-          {/* Summary Card */}
-          {renderSummaryCard()}
+    <>
+      <FlatList
+        data={filteredRequests}
+        keyExtractor={(item) => item._id.toString()}
+        renderItem={renderHistoryItem}
+        contentContainerStyle={styles.container}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
+        ListHeaderComponent={
+          <View>
+            {/* Summary Card */}
+            {renderSummaryCard()}
 
-          {/* Department Stats */}
-          {renderDepartmentStats()}
+            {/* Department Stats */}
+            {renderDepartmentStats()}
 
-          {/* Search Bar */}
-          <View style={styles.searchContainer}>
-            <View style={styles.searchBar}>
-              <Icon name="search" size={20} color="#9CA3AF" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Tìm kiếm nhân viên, phòng ban..."
-                placeholderTextColor="#9CA3AF"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Icon name="close" size={20} color="#9CA3AF" />
-                </TouchableOpacity>
-              )}
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+              <View style={styles.searchBar}>
+                <Icon name="search" size={20} color="#9CA3AF" />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder="Tìm kiếm nhân viên, phòng ban..."
+                  placeholderTextColor="#9CA3AF"
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <Icon name="close" size={20} color="#9CA3AF" />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {/* Type Filter */}
+            <View style={styles.typeFilterContainer}>
+              <Text style={styles.filterLabel}>Loại làm thêm:</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeFilterList}>
+                {OVERTIME_TYPE_FILTERS.map((filter) => (
+                  <TouchableOpacity
+                    key={filter.key}
+                    style={[
+                      styles.typeChip,
+                      selectedTypeFilter === filter.key && styles.typeChipActive,
+                    ]}
+                    onPress={() => setSelectedTypeFilter(filter.key)}
+                  >
+                    <Text
+                      style={[
+                        styles.typeChipText,
+                        selectedTypeFilter === filter.key && styles.typeChipTextActive,
+                      ]}
+                    >
+                      {filter.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Status Filter */}
+            <StatusFilter
+              filters={filters}
+              selectedFilter={selectedFilter}
+              onSelectFilter={handleFilterSelect}
+            />
+
+            {/* Stats Summary */}
+            <View style={styles.statsContainer}>
+              <Text style={styles.statsText}>
+                Hiển thị: <Text style={styles.statsNumber}>{filteredRequests.length}</Text> / {pagination.total || 0} yêu cầu
+              </Text>
             </View>
           </View>
-
-          {/* Type Filter */}
-          <View style={styles.typeFilterContainer}>
-            <Text style={styles.filterLabel}>Loại làm thêm:</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeFilterList}>
-              {OVERTIME_TYPE_FILTERS.map((filter) => (
-                <TouchableOpacity
-                  key={filter.key}
-                  style={[
-                    styles.typeChip,
-                    selectedTypeFilter === filter.key && styles.typeChipActive,
-                  ]}
-                  onPress={() => setSelectedTypeFilter(filter.key)}
-                >
-                  <Text
-                    style={[
-                      styles.typeChipText,
-                      selectedTypeFilter === filter.key && styles.typeChipTextActive,
-                    ]}
-                  >
-                    {filter.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Icon name="history" size={64} color="#E5E7EB" />
+            <Text style={styles.emptyText}>Không có lịch sử làm thêm giờ nào</Text>
+            {searchQuery.length > 0 && (
+              <Text style={styles.emptySubtext}>Thử tìm kiếm với từ khóa khác</Text>
+            )}
           </View>
+        }
+      />
 
-          {/* Status Filter */}
-          <StatusFilter
-            filters={filters}
-            selectedFilter={selectedFilter}
-            onSelectFilter={handleFilterSelect}
-          />
-
-          {/* Stats Summary */}
-          <View style={styles.statsContainer}>
-            <Text style={styles.statsText}>
-              Hiển thị: <Text style={styles.statsNumber}>{filteredRequests.length}</Text> / {pagination.total || 0} yêu cầu
-            </Text>
-          </View>
-        </View>
-      }
-      ListEmptyComponent={
-        <View style={styles.emptyContainer}>
-          <Icon name="history" size={64} color="#E5E7EB" />
-          <Text style={styles.emptyText}>Không có lịch sử làm thêm giờ nào</Text>
-          {searchQuery.length > 0 && (
-            <Text style={styles.emptySubtext}>Thử tìm kiếm với từ khóa khác</Text>
-          )}
-        </View>
-      }
-    />
+      {/* Action Modal */}
+      <RejectModal
+        visible={showActionModal}
+        onClose={() => {
+          setShowActionModal(false);
+          setActionNote('');
+          setSelectedRequest(null);
+          setActionType(null);
+        }}
+        onConfirm={confirmAction}
+        note={actionNote}
+        setNote={setActionNote}
+        title={actionType === 'approve' ? 'Duyệt đơn làm thêm giờ' : 'Từ chối đơn làm thêm giờ'}
+        placeholder={actionType === 'approve' ? 'Nhập ghi chú khi duyệt (không bắt buộc)...' : 'Nhập lý do từ chối...'}
+        confirmButtonText={actionType === 'approve' ? 'Duyệt' : 'Từ chối'}
+        confirmButtonColor={actionType === 'approve' ? '#10B981' : '#EF4444'}
+      />
+    </>
   );
 };
 

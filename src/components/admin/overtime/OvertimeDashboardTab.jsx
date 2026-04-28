@@ -258,45 +258,45 @@ const OvertimeDashboardTab = ({ dashboard, selectedYear, onYearChange, onRefresh
       {recentActivity.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Hoạt động gần đây</Text>
-          {recentActivity.map((activity, index) => (
-            <View key={index} style={styles.activityItem}>
-              <View
-                style={[
-                  styles.activityIcon,
-                  {
-                    backgroundColor:
-                      activity.type === 'approved'
-                        ? '#D1FAE5'
-                        : activity.type === 'rejected'
-                        ? '#FEE2E2'
-                        : '#FEF3C7',
-                  },
-                ]}
-              >
-                <Icon
-                  name={
-                    activity.type === 'approved'
-                      ? 'check'
-                      : activity.type === 'rejected'
-                      ? 'close'
-                      : 'access-time'
-                  }
-                  size={16}
-                  color={
-                    activity.type === 'approved'
-                      ? '#10B981'
-                      : activity.type === 'rejected'
-                      ? '#EF4444'
-                      : '#F59E0B'
-                  }
-                />
+          {recentActivity.map((activity, index) => {
+            const status = activity.status;
+            const employeeName = activity.userId?.fullName || 'Không xác định';
+            const approverName = activity.approverBy?.fullName;
+            const overtimeType = activity.overtimeTypeDisplay || activity.overtimeType;
+            const hours = activity.hoursWork;
+            const date = activity.otDate ? new Date(activity.otDate).toLocaleDateString('vi-VN') : '';
+
+            // Xác định màu sắc và icon dựa trên status
+            const isApproved = status === 'approved';
+            const isRejected = status === 'rejected';
+            const isPending = status === 'pending';
+
+            const iconBgColor = isApproved ? '#D1FAE5' : isRejected ? '#FEE2E2' : '#FEF3C7';
+            const iconColor = isApproved ? '#10B981' : isRejected ? '#EF4444' : '#F59E0B';
+            const iconName = isApproved ? 'check' : isRejected ? 'close' : 'access-time';
+
+            // Tạo description text
+            let description = '';
+            if (isPending) {
+              description = `${employeeName} đăng ký làm thêm ${overtimeType} (${hours} giờ)`;
+            } else if (isApproved) {
+              description = `${employeeName} - ${approverName || 'Admin'} đã duyệt ${overtimeType} (${hours} giờ)`;
+            } else if (isRejected) {
+              description = `${employeeName} - ${approverName || 'Admin'} đã từ chối ${overtimeType}`;
+            }
+
+            return (
+              <View key={index} style={styles.activityItem}>
+                <View style={[styles.activityIcon, { backgroundColor: iconBgColor }]}>
+                  <Icon name={iconName} size={16} color={iconColor} />
+                </View>
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityText} numberOfLines={2}>{description}</Text>
+                  <Text style={styles.activityTime}>{date}</Text>
+                </View>
               </View>
-              <View style={styles.activityContent}>
-                <Text style={styles.activityText}>{activity.description}</Text>
-                <Text style={styles.activityTime}>{activity.time}</Text>
-              </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
 

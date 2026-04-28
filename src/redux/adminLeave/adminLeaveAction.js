@@ -1,12 +1,12 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import {
-  getAllLeaveRequestsApi,
+import { 
+   getAllLeaveRequestsApi,
   getEmployeeLeaveRequestsApi,
   getLeaveHistoryApi,
   getLeaveDashboardApi,
   getAllLeaveBalancesApi,
   updateLeaveRequestStatusApi,
-} from '../../api/admin.api';
+ } from '../../api/leave.api';
 
 // Re-export actions from slice
 export { clearError, clearMessage, resetSelectedEmployee, setPage, setEmployeePage, setHistoryPage, resetLeaveRequests } from './adminLeaveSlice';

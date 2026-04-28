@@ -1,12 +1,11 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import {
-  getAllOvertimeRequestsApi,
-  getEmployeeOvertimeRequestsApi,
-  getOvertimeHistoryApi,
-  getOvertimeDashboardApi,
-  approveOvertimeRequestApi,
-  rejectOvertimeRequestApi,
-} from '../../api/admin.api';
+ getAllOvertimeRequestsApi,
+ getEmployeeOvertimeRequestsApi,
+ getOvertimeDashboardApi,
+ getOvertimeHistoryApi,
+ updateOvertimeRequestStatusApi,
+} from '../../api/overtime.api';
 
 // Re-export actions from slice
 export {
@@ -144,9 +143,9 @@ export const updateOvertimeRequestStatusAction = createAsyncThunk(
     try {
       let response;
       if (status === 'approved') {
-        response = await approveOvertimeRequestApi(id);
+        response = await updateOvertimeRequestStatusApi(id, { status, note: '' });
       } else {
-        response = await rejectOvertimeRequestApi(id, note);
+        response = await updateOvertimeRequestStatusApi(id, { status, note });
       }
 
       if (response && response.success) {
