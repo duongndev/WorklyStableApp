@@ -34,6 +34,8 @@ import AdminOvertimeDashboardScreen from '../screens/admin/OvertimeDashboardScre
 import AdminOvertimeManagementScreen from '../screens/admin/AdminOvertimeManagementScreen';
 import AttendanceHistoryScreenAdmin from '../screens/admin/AttendanceHistoryScreen';
 import WorkScheduleScreenAdmin from '../screens/admin/WorkScheduleScreen';
+import AdminAttendanceScreen from '../screens/admin/AdminAttendanceScreen';
+import AttendanceDetailScreen from '../screens/admin/AttendanceDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -66,6 +68,8 @@ const SCREENS = [
   { name: 'AdminOvertimeDashboard', component: AdminOvertimeDashboardScreen },
   { name: 'AttendanceHistory', component: AttendanceHistoryScreenAdmin },
   { name: 'AdminWorkSchedule', component: WorkScheduleScreenAdmin },
+  { name: 'AdminAttendance', component: AdminAttendanceScreen },
+  { name: 'AttendanceDetail', component: AttendanceDetailScreen },
 ];
 
 const AppNavigator = memo(() => {

@@ -169,7 +169,7 @@ export const getOvertimeDashboardApi = async (params = {}) => {
     const response = await axiosClient.get('/admin/overtime-requests/dashboard', { params });
     return response.data;
   } catch (error) {
-    console.log('Lỗi khi lấy dashboard thống kê làm thêm giờ:', error);j
+    console.log('Lỗi khi lấy dashboard thống kê làm thêm giờ:', error);
     throw error;
   }
 };
