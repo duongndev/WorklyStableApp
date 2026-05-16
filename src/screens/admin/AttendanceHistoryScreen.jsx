@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,13 +7,14 @@ import {
   TouchableOpacity,
   RefreshControl,
   Modal,
-  TextInput,
   ScrollView,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Header from '../../components/common/Header';
+import { getAllAttendanceHistoryApi } from '../../api/admin.api';
 
 const { width } = Dimensions.get('window');
 
@@ -24,8 +25,13 @@ const AttendanceHistoryScreen = ({ navigation }) => {
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const [attendanceData, setAttendanceData] = useState([
+  const [attendanceData, setAttendanceData] = useState([]);
+
+  // Fallback data for demo
+  const fallbackData = [
     {
       id: 1,
       employeeName: 'Nguyễn Văn A',
@@ -97,7 +103,29 @@ const AttendanceHistoryScreen = ({ navigation }) => {
       lateMinutes: 0,
       location: 'Văn phòng chính',
     },
-  ]);
+  ];
+
+  const fetchAttendanceHistory = useCallback(async () => {
+    try {
+      setError(null);
+      const response = await getAllAttendanceHistoryApi({ month: selectedMonth });
+      if (response.success) {
+        setAttendanceData(response.data || []);
+      } else {
+        setAttendanceData(fallbackData);
+      }
+    } catch (err) {
+      console.log('Error fetching attendance history:', err);
+      setError('Không thể tải dữ liệu. Hiển thị dữ liệu mẫu.');
+      setAttendanceData(fallbackData);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedMonth]);
+
+  useEffect(() => {
+    fetchAttendanceHistory();
+  }, [fetchAttendanceHistory]);
 
   const filters = [
     { key: 'all', label: 'Tất cả', count: attendanceData.length },
@@ -112,12 +140,11 @@ const AttendanceHistoryScreen = ({ navigation }) => {
     '2024-07', '2024-08', '2024-09', '2024-10', '2024-11', '2024-12',
   ];
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
-  }, []);
+    await fetchAttendanceHistory();
+    setRefreshing(false);
+  }, [fetchAttendanceHistory]);
 
   const filteredData = attendanceData.filter(record => {
     const matchesFilter = selectedFilter === 'all' || record.status === selectedFilter;
@@ -234,6 +261,16 @@ const AttendanceHistoryScreen = ({ navigation }) => {
 
   const stats = calculateStats();
 
+  // Loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centerContent]} edges={['bottom']}>
+        <ActivityIndicator size="large" color="#4F46E5" />
+        <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Header 
@@ -244,6 +281,13 @@ const AttendanceHistoryScreen = ({ navigation }) => {
         ]}
       />
       
+      {error && (
+        <View style={styles.errorBanner}>
+          <Icon name="warning" size={20} color="#F59E0B" />
+          <Text style={styles.errorBannerText}>{error}</Text>
+        </View>
+      )}
+
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
           <Icon name="search" size={20} color="#6B7280" />
@@ -412,6 +456,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  errorBannerText: {
+    fontSize: 14,
+    color: '#92400E',
+    fontWeight: '500',
   },
   header: {
     backgroundColor: '#4F46E5',

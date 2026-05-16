@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,10 +9,12 @@ import {
   Modal,
   TextInput,
   RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Header from '../../components/common/Header';
+import { getDetailLeavesRequestApi, updateLeaveRequestStatusApi } from '../../api/leave.api';
 
 const InfoRow = ({ icon, label, value, color = '#4B5563' }) => (
   <View style={styles.infoRow}>
@@ -39,41 +41,38 @@ const LeaveRequestDetailScreen = ({ route, navigation }) => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [loading, setLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [requestDetail, setRequestDetail] = useState(null);
 
-  const [requestDetail, setRequestDetail] = useState({
-    id: requestId,
-    employeeName: 'Nguyễn Văn A',
-    employeeId: 'NV001',
-    email: 'nguyenvana@workly.com',
-    phone: '0912345678',
-    department: 'Kỹ thuật',
-    position: 'Senior Developer',
-    manager: 'Trần Quang B',
-    leaveType: 'Nghỉ ốm',
-    startDate: '2024-03-20',
-    endDate: '2024-03-22',
-    totalDays: 3,
-    reason: 'Sốt cao và cần thời gian nghỉ ngơi để phục hồi sức khỏe. Đã đi khám bác sĩ và được khuyên nghỉ ngơi 3 ngày.',
-    status: 'pending',
-    createdAt: '2024-03-18T10:30:00',
-    attachments: [
-      { id: 1, name: 'Don_xin_nghi.pdf', size: '245 KB' },
-      { id: 2, name: 'Giay_kham_benh.pdf', size: '1.2 MB' },
-    ],
-    leaveBalance: {
-      annualLeave: 12,
-      sickLeave: 10,
-      usedAnnualLeave: 5,
-      usedSickLeave: 2,
-    },
-  });
+  // Fetch leave request detail
+  const fetchRequestDetail = useCallback(async () => {
+    try {
+      setError(null);
+      const response = await getDetailLeavesRequestApi(requestId);
+      if (response.success) {
+        setRequestDetail(response.data);
+      } else {
+        setError('Không thể tải dữ liệu đơn xin nghỉ');
+      }
+    } catch (err) {
+      console.log('Error fetching leave request detail:', err);
+      setError('Có lỗi xảy ra khi tải dữ liệu');
+    } finally {
+      setFetchLoading(false);
+    }
+  }, [requestId]);
 
-  const onRefresh = useCallback(() => {
+  // Initial load
+  useEffect(() => {
+    fetchRequestDetail();
+  }, [fetchRequestDetail]);
+
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    setTimeout(() => {
-      setRefreshing(false);
-    }, 2000);
-  }, []);
+    await fetchRequestDetail();
+    setRefreshing(false);
+  }, [fetchRequestDetail]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -102,17 +101,21 @@ const LeaveRequestDetailScreen = ({ route, navigation }) => {
         {
           text: 'Duyệt',
           onPress: async () => {
-            setLoading(true);
-            setTimeout(() => {
-              setRequestDetail(prev => ({
-                ...prev,
-                status: 'approved',
-                approvedBy: 'Admin',
-                approvedAt: new Date().toISOString()
-              }));
+            try {
+              setLoading(true);
+              const response = await updateLeaveRequestStatusApi(requestId, { status: 'approved', note: 'Đã duyệt' });
+              if (response.success) {
+                await fetchRequestDetail();
+                Alert.alert('Thành công', 'Đơn xin nghỉ đã được duyệt');
+              } else {
+                Alert.alert('Lỗi', response.message || 'Không thể duyệt đơn');
+              }
+            } catch (err) {
+              console.log('Error approving leave request:', err);
+              Alert.alert('Lỗi', 'Có lỗi xảy ra khi duyệt đơn');
+            } finally {
               setLoading(false);
-              Alert.alert('Thành công', 'Đơn xin nghỉ đã được duyệt');
-            }, 1000);
+            }
           },
         },
       ]
@@ -123,26 +126,29 @@ const LeaveRequestDetailScreen = ({ route, navigation }) => {
     setShowRejectModal(true);
   };
 
-  const confirmReject = () => {
+  const confirmReject = async () => {
     if (!rejectReason.trim()) {
       Alert.alert('Lỗi', 'Vui lòng nhập lý do từ chối');
       return;
     }
 
-    setLoading(true);
-    setTimeout(() => {
-      setRequestDetail(prev => ({
-        ...prev,
-        status: 'rejected',
-        rejectedBy: 'Admin',
-        rejectedReason: rejectReason,
-        rejectedAt: new Date().toISOString()
-      }));
+    try {
+      setLoading(true);
+      const response = await updateLeaveRequestStatusApi(requestId, { status: 'rejected', note: rejectReason });
+      if (response.success) {
+        await fetchRequestDetail();
+        setShowRejectModal(false);
+        setRejectReason('');
+        Alert.alert('Thành công', 'Đơn xin nghỉ đã bị từ chối');
+      } else {
+        Alert.alert('Lỗi', response.message || 'Không thể từ chối đơn');
+      }
+    } catch (err) {
+      console.log('Error rejecting leave request:', err);
+      Alert.alert('Lỗi', 'Có lỗi xảy ra khi từ chối đơn');
+    } finally {
       setLoading(false);
-      setShowRejectModal(false);
-      setRejectReason('');
-      Alert.alert('Thành công', 'Đơn xin nghỉ đã bị từ chối');
-    }, 1000);
+    }
   };
 
   const formatDate = (dateString) => {
@@ -155,6 +161,31 @@ const LeaveRequestDetailScreen = ({ route, navigation }) => {
       minute: '2-digit'
     });
   };
+
+  // Loading state
+  if (fetchLoading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centerContent]} edges={['bottom']}>
+        <Header title="Chi tiết đơn xin nghỉ" canGoBack />
+        <ActivityIndicator size="large" color="#4F46E5" />
+        <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  // Error state
+  if (error || !requestDetail) {
+    return (
+      <SafeAreaView style={[styles.container, styles.centerContent]} edges={['bottom']}>
+        <Header title="Chi tiết đơn xin nghỉ" canGoBack />
+        <Icon name="error-outline" size={64} color="#EF4444" />
+        <Text style={styles.errorText}>{error || 'Không tìm thấy đơn xin nghỉ'}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchRequestDetail}>
+          <Text style={styles.retryButtonText}>Thử lại</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
@@ -328,6 +359,35 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 24,
+    paddingHorizontal: 32,
+  },
+  retryButton: {
+    backgroundColor: '#4F46E5',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   header: {
     backgroundColor: '#4F46E5',

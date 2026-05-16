@@ -12,6 +12,22 @@ export const STATUS_CONFIG = [
   { key: 'rejected', label: 'Từ chối', count: 0 },
 ];
 
+// Leave request specific filters
+export const LEAVE_STATUS_FILTERS = [
+  { key: 'all', label: 'Tất cả', count: 0 },
+  { key: 'pending', label: 'Chờ duyệt', count: 0 },
+  { key: 'approved', label: 'Đã duyệt', count: 0 },
+  { key: 'rejected', label: 'Đã từ chối', count: 0 },
+];
+
+// Overtime request specific filters
+export const OVERTIME_STATUS_FILTERS = [
+  { key: 'all', label: 'Tất cả', count: 0 },
+  { key: 'pending', label: 'Chờ duyệt', count: 0 },
+  { key: 'approved', label: 'Đã duyệt', count: 0 },
+  { key: 'rejected', label: 'Đã từ chối', count: 0 },
+];
+
 
 // Attendance filters
 export const ATTENDANCE_STATUS_FILTERS = [
@@ -63,12 +79,15 @@ export const DATE_RANGE_FILTERS = [
  * @returns {Array} Updated filters with counts
  */
 export const updateFilterCounts = (filters, data, statusField = 'status') => {
+  // Ensure data is an array
+  const safeData = Array.isArray(data) ? data : [];
+  
   return filters.map(filter => {
     if (filter.key === 'all') {
-      return { ...filter, count: data.length };
+      return { ...filter, count: safeData.length };
     }
     
-    const count = data.filter(item => {
+    const count = safeData.filter(item => {
       if (filter.key === 'unread') return !item.read;
       if (filter.key === 'read') return item.read;
       return item[statusField] === filter.key;
@@ -86,9 +105,12 @@ export const updateFilterCounts = (filters, data, statusField = 'status') => {
  * @returns {Array} Filtered data
  */
 export const filterData = (data, selectedFilter, statusField = 'status') => {
-  if (selectedFilter === 'all') return data;
+  // Ensure data is an array
+  const safeData = Array.isArray(data) ? data : [];
   
-  return data.filter(item => {
+  if (selectedFilter === 'all') return safeData;
+  
+  return safeData.filter(item => {
     if (selectedFilter === 'unread') return !item.read;
     if (selectedFilter === 'read') return item.read;
     return item[statusField] === selectedFilter;
@@ -97,6 +119,8 @@ export const filterData = (data, selectedFilter, statusField = 'status') => {
 
 export default {
   STATUS_CONFIG,
+  LEAVE_STATUS_FILTERS,
+  OVERTIME_STATUS_FILTERS,
   ATTENDANCE_STATUS_FILTERS,
   SCHEDULE_FILTERS,
   NOTIFICATION_FILTERS,
