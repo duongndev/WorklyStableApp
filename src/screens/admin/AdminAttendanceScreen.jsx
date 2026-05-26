@@ -2,7 +2,6 @@ import React, { useState, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
-  TextInput,
   View,
   FlatList,
   TouchableOpacity,
@@ -11,20 +10,21 @@ import {
   ScrollView,
   Dimensions,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import Header from '../../components/common/Header';
-import { getAllAttendanceHistoryApi } from '../../api/admin.api';
+import { getAllAttendanceApi } from '../../api/attendance.api';
 
 const { width } = Dimensions.get('window');
 
-const AttendanceHistoryScreen = ({ navigation }) => {
+const AdminAttendanceScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState('2024-03');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState('all');
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -38,7 +38,7 @@ const AttendanceHistoryScreen = ({ navigation }) => {
       employeeName: 'Nguyễn Văn A',
       employeeId: 'NV001',
       department: 'Kỹ thuật',
-      date: '2024-03-20',
+      date: '2024-05-16',
       checkIn: '08:15',
       checkOut: '18:30',
       workHours: 9.25,
@@ -52,7 +52,7 @@ const AttendanceHistoryScreen = ({ navigation }) => {
       employeeName: 'Trần Thị B',
       employeeId: 'NV002',
       department: 'Nhân sự',
-      date: '2024-03-20',
+      date: '2024-05-16',
       checkIn: '08:00',
       checkOut: '17:30',
       workHours: 8.5,
@@ -66,7 +66,7 @@ const AttendanceHistoryScreen = ({ navigation }) => {
       employeeName: 'Lê Văn C',
       employeeId: 'NV003',
       department: 'Kinh doanh',
-      date: '2024-03-20',
+      date: '2024-05-16',
       checkIn: '09:30',
       checkOut: '18:00',
       workHours: 7.5,
@@ -80,7 +80,7 @@ const AttendanceHistoryScreen = ({ navigation }) => {
       employeeName: 'Phạm Thị D',
       employeeId: 'NV004',
       department: 'Marketing',
-      date: '2024-03-20',
+      date: '2024-05-16',
       checkIn: null,
       checkOut: null,
       workHours: 0,
@@ -95,7 +95,7 @@ const AttendanceHistoryScreen = ({ navigation }) => {
       employeeName: 'Hoàng Văn E',
       employeeId: 'NV005',
       department: 'Kế toán',
-      date: '2024-03-20',
+      date: '2024-05-16',
       checkIn: '08:00',
       checkOut: '16:00',
       workHours: 7,
@@ -106,27 +106,27 @@ const AttendanceHistoryScreen = ({ navigation }) => {
     },
   ];
 
-  const fetchAttendanceHistory = useCallback(async () => {
+  const fetchAttendanceData = useCallback(async () => {
     try {
       setError(null);
-      const response = await getAllAttendanceHistoryApi({ month: selectedMonth });
+      const response = await getAllAttendanceApi({ date: selectedDate });
       if (response.success) {
         setAttendanceData(response.data || []);
       } else {
         setAttendanceData(fallbackData);
       }
     } catch (err) {
-      console.log('Error fetching attendance history:', err);
+      console.log('Error fetching attendance data:', err);
       setError('Không thể tải dữ liệu. Hiển thị dữ liệu mẫu.');
       setAttendanceData(fallbackData);
     } finally {
       setLoading(false);
     }
-  }, [selectedMonth]);
+  }, [selectedDate]);
 
   useEffect(() => {
-    fetchAttendanceHistory();
-  }, [fetchAttendanceHistory]);
+    fetchAttendanceData();
+  }, [fetchAttendanceData]);
 
   const filters = [
     { key: 'all', label: 'Tất cả', count: attendanceData.length },
@@ -136,22 +136,17 @@ const AttendanceHistoryScreen = ({ navigation }) => {
     { key: 'absent', label: 'Nghỉ', count: attendanceData.filter(r => r.status === 'absent').length },
   ];
 
-  const months = [
-    '2024-01', '2024-02', '2024-03', '2024-04', '2024-05', '2024-06',
-    '2024-07', '2024-08', '2024-09', '2024-10', '2024-11', '2024-12',
-  ];
-
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchAttendanceHistory();
+    await fetchAttendanceData();
     setRefreshing(false);
-  }, [fetchAttendanceHistory]);
+  }, [fetchAttendanceData]);
 
   const filteredData = attendanceData.filter(record => {
     const matchesFilter = selectedFilter === 'all' || record.status === selectedFilter;
     const matchesSearch = record.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         record.employeeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         record.department.toLowerCase().includes(searchQuery.toLowerCase());
+      record.employeeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      record.department.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
@@ -191,14 +186,14 @@ const AttendanceHistoryScreen = ({ navigation }) => {
     const late = attendanceData.filter(r => r.status === 'late').length;
     const earlyLeave = attendanceData.filter(r => r.status === 'early_leave').length;
     const absent = attendanceData.filter(r => r.status === 'absent').length;
-    
+
     return { total, present, late, earlyLeave, absent };
   };
 
   const renderAttendanceItem = ({ item }) => (
     <TouchableOpacity
       style={styles.attendanceCard}
-      onPress={() => setSelectedEmployee(item)}
+      onPress={() => navigation.navigate('AttendanceDetail', { attendanceId: item.id })}
       activeOpacity={0.8}
     >
       <View style={styles.cardHeader}>
@@ -274,20 +269,31 @@ const AttendanceHistoryScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <Header 
-        title="Lịch sử chấm công" 
-        canGoBack 
+      <Header
+        title="Quản lý chấm công"
+        canGoBack
         rightActions={[
-          { icon: 'filter-outline', onPress: () => setShowFilterModal(true) }
+          { icon: 'calendar-today', onPress: () => setShowFilterModal(true) }
         ]}
       />
-      
+
       {error && (
         <View style={styles.errorBanner}>
           <Icon name="warning" size={20} color="#F59E0B" />
           <Text style={styles.errorBannerText}>{error}</Text>
         </View>
       )}
+
+      <View style={styles.dateSelector}>
+        <TouchableOpacity
+          style={styles.dateButton}
+          onPress={() => setShowFilterModal(true)}
+        >
+          <Icon name="calendar-today" size={20} color="#4F46E5" />
+          <Text style={styles.dateText}>{selectedDate}</Text>
+          <Icon name="arrow-drop-down" size={20} color="#4F46E5" />
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
@@ -357,101 +363,46 @@ const AttendanceHistoryScreen = ({ navigation }) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Chọn tháng</Text>
-            <ScrollView style={styles.monthList}>
-              {months.map((month) => (
-                <TouchableOpacity
-                  key={month}
-                  style={[
-                    styles.monthOption,
-                    selectedMonth === month && styles.selectedMonthOption,
-                  ]}
-                  onPress={() => {
-                    setSelectedMonth(month);
-                    setShowFilterModal(false);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[
-                    styles.monthOptionText,
-                    selectedMonth === month && styles.selectedMonthOptionText,
-                  ]}>
-                    {month}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Chọn ngày</Text>
+              <TouchableOpacity onPress={() => setShowFilterModal(false)}>
+                <Icon name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.dateList}>
+              {Array.from({ length: 7 }, (_, i) => {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                const dateStr = date.toISOString().split('T')[0];
+                return (
+                  <TouchableOpacity
+                    key={dateStr}
+                    style={[
+                      styles.dateOption,
+                      selectedDate === dateStr && styles.selectedDateOption,
+                    ]}
+                    onPress={() => {
+                      setSelectedDate(dateStr);
+                      setShowFilterModal(false);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[
+                      styles.dateOptionText,
+                      selectedDate === dateStr && styles.selectedDateOptionText,
+                    ]}>
+                      {dateStr}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
         </View>
       </Modal>
-
-      {selectedEmployee && (
-        <Modal
-          visible={!!selectedEmployee}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setSelectedEmployee(null)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.detailModalContent}>
-              <View style={styles.detailModalHeader}>
-                <Text style={styles.detailModalTitle}>Chi tiết chấm công</Text>
-                <TouchableOpacity onPress={() => setSelectedEmployee(null)}>
-                  <Icon name="close" size={24} color="#6B7280" />
-                </TouchableOpacity>
-              </View>
-              
-              <ScrollView style={styles.detailModalBody}>
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionTitle}>Thông tin nhân viên</Text>
-                  <InfoRow label="Họ tên" value={selectedEmployee.employeeName} />
-                  <InfoRow label="Mã NV" value={selectedEmployee.employeeId} />
-                  <InfoRow label="Phòng ban" value={selectedEmployee.department} />
-                  <InfoRow label="Ngày" value={selectedEmployee.date} />
-                </View>
-
-                <View style={styles.detailSection}>
-                  <Text style={styles.detailSectionTitle}>Thông tin chấm công</Text>
-                  <InfoRow 
-                    label="Trạng thái" 
-                    value={getStatusText(selectedEmployee.status)} 
-                    color={getStatusColor(selectedEmployee.status)}
-                  />
-                  {selectedEmployee.status !== 'absent' && (
-                    <>
-                      <InfoRow label="Giờ vào" value={selectedEmployee.checkIn || '--:--'} />
-                      <InfoRow label="Giờ ra" value={selectedEmployee.checkOut || '--:--'} />
-                      <InfoRow label="Thời gian làm việc" value={`${selectedEmployee.workHours} giờ`} />
-                      {selectedEmployee.overtimeHours > 0 && (
-                        <InfoRow label="Tăng ca" value={`${selectedEmployee.overtimeHours} giờ`} />
-                      )}
-                      {selectedEmployee.lateMinutes > 0 && (
-                        <InfoRow label="Đi muộn" value={`${selectedEmployee.lateMinutes} phút`} />
-                      )}
-                      {selectedEmployee.location && (
-                        <InfoRow label="Địa điểm" value={selectedEmployee.location} />
-                      )}
-                    </>
-                  )}
-                  {selectedEmployee.status === 'absent' && selectedEmployee.leaveType && (
-                    <InfoRow label="Lý do nghỉ" value={selectedEmployee.leaveType} />
-                  )}
-                </View>
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-      )}
     </SafeAreaView>
   );
 };
-
-const InfoRow = ({ label, value, color = '#4B5563' }) => (
-  <View style={styles.infoRow}>
-    <Text style={styles.infoLabel}>{label}:</Text>
-    <Text style={[styles.infoValue, { color }]}>{value}</Text>
-  </View>
-);
 
 const styles = StyleSheet.create({
   container: {
@@ -482,35 +433,14 @@ const styles = StyleSheet.create({
     color: '#92400E',
     fontWeight: '500',
   },
-  header: {
-    backgroundColor: '#4F46E5',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
-  },
-  backButton: {
-    padding: 5,
-  },
-  headerTitle: {
-    flex: 1,
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-  },
-  placeholder: {
-    width: 34,
-  },
-  monthSelector: {
+  dateSelector: {
     paddingHorizontal: 20,
     paddingVertical: 15,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
-  monthButton: {
+  dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -520,7 +450,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     gap: 8,
   },
-  monthText: {
+  dateText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#4F46E5',
@@ -697,81 +627,38 @@ const styles = StyleSheet.create({
     maxWidth: 300,
     maxHeight: 400,
   },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1F2937',
-    marginBottom: 15,
-    textAlign: 'center',
   },
-  monthList: {
+  dateList: {
     maxHeight: 300,
   },
-  monthOption: {
+  dateOption: {
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 8,
     marginBottom: 8,
   },
-  selectedMonthOption: {
+  selectedDateOption: {
     backgroundColor: '#4F46E5',
   },
-  monthOptionText: {
+  dateOptionText: {
     fontSize: 16,
     color: '#4B5563',
     textAlign: 'center',
   },
-  selectedMonthOptionText: {
+  selectedDateOptionText: {
     color: '#FFFFFF',
     fontWeight: '600',
   },
-  detailModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
-    width: '100%',
-    maxWidth: 400,
-    maxHeight: '80%',
-  },
-  detailModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  detailModalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  detailModalBody: {
-    padding: 20,
-  },
-  detailSection: {
-    marginBottom: 20,
-  },
-  detailSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 12,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-  },
-  infoLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    width: 100,
-    fontWeight: '500',
-  },
-  infoValue: {
-    flex: 1,
-    fontSize: 14,
-    color: '#4B5563',
-  },
 });
 
-export default AttendanceHistoryScreen;
+export default AdminAttendanceScreen;
