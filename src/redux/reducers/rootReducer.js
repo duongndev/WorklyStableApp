@@ -3,6 +3,7 @@ import authReducer from '../auth/authSlice';
 import leaveReducer from '../leave/leaveSlice';
 import adminLeaveReducer from '../adminLeave/adminLeaveSlice';
 import adminOvertimeReducer from '../adminOvertime/adminOvertimeSlice';
+import adminAttendanceReducer from '../adminAttendance/adminAttendanceSlice';
 // import overtimeReducer from './overtime/overtimeSlice';
 // import scheduleReducer from './schedule/scheduleSlice';
 // import employeeReducer from './employee/employeeSlice';
@@ -11,14 +12,19 @@ import adminOvertimeReducer from '../adminOvertime/adminOvertimeSlice';
 
 const rootReducer = combineReducers({
   auth: authReducer,
+  
+  // Employee reducers
   leave: leaveReducer,
-  adminLeave: adminLeaveReducer,
-  adminOvertime: adminOvertimeReducer,
   // overtime: overtimeReducer,
   // schedule: scheduleReducer,
   // employee: employeeReducer,
   // notification: notificationReducer,
   // attendance: attendanceReducer,
+
+  // Admin reducers
+  adminLeave: adminLeaveReducer,
+  adminOvertime: adminOvertimeReducer,
+  adminAttendance: adminAttendanceReducer,
 });
 
 export default rootReducer;

@@ -6,9 +6,9 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Header from '../../components/common/Header';
-import OvertimeHistoryTab from '../../components/admin/overtime/OvertimeHistoryTab';
-import { getOvertimeHistoryApi } from '../../api/admin.api';
+import Header from '../../../components/common/Header';
+import OvertimeHistoryTab from '../../../components/admin/overtime/OvertimeHistoryTab';
+import { getOvertimeHistoryApi } from '../../../api/admin.api';
 
 const OvertimeHistoryScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);

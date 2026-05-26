@@ -58,7 +58,7 @@ export const getLeaveStatisticsApi = async () => {
  */
 export const getDetailLeavesRequestApi = async (id) => {
   try {
-    const response = await axiosClient.get(`/leave-requests/detail/${id}`);
+    const response = await axiosClient.get(`/leave-requests/${id}`);
     return response.data;
   } catch (error) {
     console.log('Lỗi khi lấy chi tiết đơn xin nghỉ:', error);

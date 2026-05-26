@@ -12,11 +12,11 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useDispatch, useSelector } from 'react-redux';
-import Header from '../../components/common/Header';
-import LeaveRequestsTab from '../../components/admin/leave/LeaveRequestsTab';
-import LeaveDashboardTab from '../../components/admin/leave/LeaveDashboardTab';
-import LeaveHistoryTab from '../../components/admin/leave/LeaveHistoryTab';
-import LeaveBalanceTab from '../../components/admin/leave/LeaveBalanceTab';
+import Header from '../../../components/common/Header';
+import LeaveRequestsTab from '../../../components/admin/leave/LeaveRequestsTab';
+import LeaveDashboardTab from '../../../components/admin/leave/LeaveDashboardTab';
+import LeaveHistoryTab from '../../../components/admin/leave/LeaveHistoryTab';
+import LeaveBalanceTab from '../../../components/admin/leave/LeaveBalanceTab';
 import {
   getAllLeaveRequestsAction,
   getLeaveDashboardAction,
@@ -24,7 +24,7 @@ import {
   getAllLeaveBalancesAction,
   clearError,
   clearMessage,
-} from '../../redux/adminLeave/adminLeaveAction';
+} from '../../../redux/adminLeave/adminLeaveAction';
 
 const { width } = Dimensions.get('window');
 

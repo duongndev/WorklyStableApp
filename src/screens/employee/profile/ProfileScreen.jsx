@@ -39,8 +39,15 @@ const ProfileScreen = () => {
           onPress: async () => {
             try {
               // Dispatch logout action để gọi API
-              await dispatch(logoutAction());
-              
+              const resultAction =  await dispatch(logoutAction());
+
+              // nếu logout thành công, tiếp tục xóa token và điều hướng về Login
+              if (logoutAction.fulfilled.match(resultAction)) {
+                console.log('Đăng xuất thành công:', resultAction.payload.message);
+              } else {
+                console.error('Lỗi khi đăng xuất:', resultAction.payload || 'Unknown error');
+              }
+      
               // Xóa tokens khỏi AsyncStorage
               await Promise.all([
                 removeToken(),

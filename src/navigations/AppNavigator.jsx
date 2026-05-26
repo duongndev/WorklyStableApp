@@ -23,18 +23,17 @@ import ProfileScreen from '../screens/employee/profile/ProfileScreen';
 import CreateLeaveScreen from '../screens/employee/leave/CreateLeaveScreen';
 
 // Admin Screens
-import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
-import AdminLeaveManagementScreen from '../screens/admin/AdminLeaveManagementScreen';
-import LeaveRequestsListScreen from '../screens/admin/LeaveRequestsListScreen';
-import LeaveRequestDetailScreenAdmin from '../screens/admin/LeaveRequestDetailScreen';
-import OvertimeRequestsListScreen from '../screens/admin/OvertimeRequestsListScreen';
-import OvertimeRequestDetailScreenAdmin from '../screens/admin/OvertimeRequestDetailScreen';
-import AdminOvertimeHistoryScreen from '../screens/admin/OvertimeHistoryScreen';
-import AdminOvertimeDashboardScreen from '../screens/admin/OvertimeDashboardScreen';
-import AdminOvertimeManagementScreen from '../screens/admin/AdminOvertimeManagementScreen';
-import AttendanceHistoryScreenAdmin from '../screens/admin/AttendanceHistoryScreen';
+import AdminDashboardScreen from '../screens/admin/dashboard/AdminDashboardScreen';
+import AdminLeaveManagementScreen from '../screens/admin/leave/AdminLeaveManagementScreen';
+import LeaveRequestsListScreen from '../screens/admin/leave/LeaveRequestsListScreen';
+import LeaveRequestDetailScreenAdmin from '../screens/admin/leave/LeaveRequestDetailScreen';
+import OvertimeRequestsListScreen from '../screens/admin/overtime/OvertimeRequestsListScreen';
+import OvertimeRequestDetailScreenAdmin from '../screens/admin/overtime/OvertimeRequestDetailScreen';
+import AdminOvertimeHistoryScreen from '../screens/admin/overtime/OvertimeHistoryScreen';
+import AdminOvertimeDashboardScreen from '../screens/admin/overtime/OvertimeDashboardScreen';
+import AdminOvertimeManagementScreen from '../screens/admin/overtime/AdminOvertimeManagementScreen';
+import AdminAttendanceScreen from '../screens/admin/attendance/AdminAttendanceScreen';
 import WorkScheduleScreenAdmin from '../screens/admin/WorkScheduleScreen';
-// import AdminAttendanceScreen from '../screens/admin/AdminAttendanceScreen';
 // import AttendanceDetailScreen from '../screens/admin/AttendanceDetailScreen';
 
 const Stack = createNativeStackNavigator();
@@ -66,9 +65,8 @@ const SCREENS = [
   { name: 'AdminOvertimeManagement', component: AdminOvertimeManagementScreen },
   { name: 'AdminOvertimeHistory', component: AdminOvertimeHistoryScreen },
   { name: 'AdminOvertimeDashboard', component: AdminOvertimeDashboardScreen },
-  { name: 'AttendanceHistory', component: AttendanceHistoryScreenAdmin },
   { name: 'AdminWorkSchedule', component: WorkScheduleScreenAdmin },
-  // { name: 'AdminAttendance', component: AdminAttendanceScreen },
+  { name: 'AdminAttendanceScreen', component: AdminAttendanceScreen },
   // { name: 'AttendanceDetail', component: AttendanceDetailScreen },
 ];
 

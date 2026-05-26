@@ -12,9 +12,9 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import StatCard from '../../components/common/StatCard';
-import MenuItem from '../../components/common/MenuItem';
-import { getAdminDashboardStatsApi } from '../../api/admin.api';
+import StatCard from '../../../components/common/StatCard';
+import MenuItem from '../../../components/common/MenuItem';
+import { getAdminDashboardStatsApi } from '../../../api/admin.api';
 
 const { width } = Dimensions.get('window');
 
@@ -128,7 +128,7 @@ const AdminDashboardScreen = ({ navigation }) => {
       icon: 'history',
       color: '#06B6D4',
       count: null,
-      screen: 'AttendanceHistory',
+      screen: 'AdminAttendanceScreen',
     },
     {
       id: 5,
@@ -298,6 +298,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#FFFFFF',
     marginBottom: 5,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerSubtitle: {
     fontSize: 16,

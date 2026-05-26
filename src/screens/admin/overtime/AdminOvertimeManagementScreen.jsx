@@ -12,17 +12,17 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useDispatch, useSelector } from 'react-redux';
-import Header from '../../components/common/Header';
-import OvertimeRequestsTab from '../../components/admin/overtime/OvertimeRequestsTab';
-import OvertimeDashboardTab from '../../components/admin/overtime/OvertimeDashboardTab';
-import OvertimeHistoryTab from '../../components/admin/overtime/OvertimeHistoryTab';
+import Header from '../../../components/common/Header';
+import OvertimeRequestsTab from '../../../components/admin/overtime/OvertimeRequestsTab';
+import OvertimeDashboardTab from '../../../components/admin/overtime/OvertimeDashboardTab';
+import OvertimeHistoryTab from '../../../components/admin/overtime/OvertimeHistoryTab';
 import {
   getAllOvertimeRequestsAction,
   getOvertimeDashboardAction,
   getOvertimeHistoryAction,
   clearError,
   clearMessage,
-} from '../../redux/adminOvertime/adminOvertimeAction';
+} from '../../../redux/adminOvertime/adminOvertimeAction';
 
 const { width } = Dimensions.get('window');
 

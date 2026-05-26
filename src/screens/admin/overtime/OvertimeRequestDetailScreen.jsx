@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,12 +9,10 @@ import {
   Modal,
   TextInput,
   RefreshControl,
-  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import Header from '../../components/common/Header';
-import { getDetailLeavesRequestApi, updateLeaveRequestStatusApi } from '../../api/leave.api';
+import Header from '../../../components/common/Header';
 
 const InfoRow = ({ icon, label, value, color = '#4B5563' }) => (
   <View style={styles.infoRow}>
@@ -35,44 +33,46 @@ const AttachmentItem = ({ attachment }) => (
   </TouchableOpacity>
 );
 
-const LeaveRequestDetailScreen = ({ route, navigation }) => {
+const OvertimeRequestDetailScreen = ({ route, navigation }) => {
   const { requestId } = route.params;
   const [refreshing, setRefreshing] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [loading, setLoading] = useState(false);
-  const [fetchLoading, setFetchLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [requestDetail, setRequestDetail] = useState(null);
 
-  // Fetch leave request detail
-  const fetchRequestDetail = useCallback(async () => {
-    try {
-      setError(null);
-      const response = await getDetailLeavesRequestApi(requestId);
-      if (response.success) {
-        setRequestDetail(response.data);
-      } else {
-        setError('Không thể tải dữ liệu đơn xin nghỉ');
-      }
-    } catch (err) {
-      console.log('Error fetching leave request detail:', err);
-      setError('Có lỗi xảy ra khi tải dữ liệu');
-    } finally {
-      setFetchLoading(false);
-    }
-  }, [requestId]);
+  const [requestDetail, setRequestDetail] = useState({
+    id: requestId,
+    employeeName: 'Nguyễn Văn A',
+    employeeId: 'NV001',
+    email: 'nguyenvana@workly.com',
+    phone: '0912345678',
+    department: 'Kỹ thuật',
+    position: 'Senior Developer',
+    manager: 'Trần Quang B',
+    date: '2024-03-20',
+    startTime: '18:00',
+    endTime: '22:00',
+    totalHours: 4,
+    reason: 'Hoàn thành dự án khách hàng gấp, cần thêm thời gian để hoàn thành features còn thiếu. Đang trong giai đoạn cuối của dự án và khách hàng yêu cầu giao hàng sớm hơn 2 ngày so với kế hoạch.',
+    status: 'pending',
+    createdAt: '2024-03-18T14:30:00',
+    attachments: [
+      { id: 1, name: 'Yeu_cau_khach_hang.pdf', size: '345 KB' },
+      { id: 2, name: 'Ke_hoach_du_an.pdf', size: '2.1 MB' },
+    ],
+    overtimeStats: {
+      thisMonth: 12,
+      totalYear: 48,
+      maxAllowed: 60,
+    },
+  });
 
-  // Initial load
-  useEffect(() => {
-    fetchRequestDetail();
-  }, [fetchRequestDetail]);
-
-  const onRefresh = useCallback(async () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
-    await fetchRequestDetail();
-    setRefreshing(false);
-  }, [fetchRequestDetail]);
+    setTimeout(() => {
+      setRefreshing(false);
+    }, 2000);
+  }, []);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -95,27 +95,23 @@ const LeaveRequestDetailScreen = ({ route, navigation }) => {
   const handleApprove = () => {
     Alert.alert(
       'Xác nhận duyệt',
-      'Bạn có chắc chắn muốn duyệt đơn xin nghỉ này?',
+      'Bạn có chắc chắn muốn duyệt đơn làm thêm giờ này?',
       [
         { text: 'Hủy', style: 'cancel' },
         {
           text: 'Duyệt',
           onPress: async () => {
-            try {
-              setLoading(true);
-              const response = await updateLeaveRequestStatusApi(requestId, { status: 'approved', note: 'Đã duyệt' });
-              if (response.success) {
-                await fetchRequestDetail();
-                Alert.alert('Thành công', 'Đơn xin nghỉ đã được duyệt');
-              } else {
-                Alert.alert('Lỗi', response.message || 'Không thể duyệt đơn');
-              }
-            } catch (err) {
-              console.log('Error approving leave request:', err);
-              Alert.alert('Lỗi', 'Có lỗi xảy ra khi duyệt đơn');
-            } finally {
+            setLoading(true);
+            setTimeout(() => {
+              setRequestDetail(prev => ({
+                ...prev,
+                status: 'approved',
+                approvedBy: 'Admin',
+                approvedAt: new Date().toISOString()
+              }));
               setLoading(false);
-            }
+              Alert.alert('Thành công', 'Đơn làm thêm giờ đã được duyệt');
+            }, 1000);
           },
         },
       ]
@@ -126,29 +122,26 @@ const LeaveRequestDetailScreen = ({ route, navigation }) => {
     setShowRejectModal(true);
   };
 
-  const confirmReject = async () => {
+  const confirmReject = () => {
     if (!rejectReason.trim()) {
       Alert.alert('Lỗi', 'Vui lòng nhập lý do từ chối');
       return;
     }
 
-    try {
-      setLoading(true);
-      const response = await updateLeaveRequestStatusApi(requestId, { status: 'rejected', note: rejectReason });
-      if (response.success) {
-        await fetchRequestDetail();
-        setShowRejectModal(false);
-        setRejectReason('');
-        Alert.alert('Thành công', 'Đơn xin nghỉ đã bị từ chối');
-      } else {
-        Alert.alert('Lỗi', response.message || 'Không thể từ chối đơn');
-      }
-    } catch (err) {
-      console.log('Error rejecting leave request:', err);
-      Alert.alert('Lỗi', 'Có lỗi xảy ra khi từ chối đơn');
-    } finally {
+    setLoading(true);
+    setTimeout(() => {
+      setRequestDetail(prev => ({
+        ...prev,
+        status: 'rejected',
+        rejectedBy: 'Admin',
+        rejectedReason: rejectReason,
+        rejectedAt: new Date().toISOString()
+      }));
       setLoading(false);
-    }
+      setShowRejectModal(false);
+      setRejectReason('');
+      Alert.alert('Thành công', 'Đơn làm thêm giờ đã bị từ chối');
+    }, 1000);
   };
 
   const formatDate = (dateString) => {
@@ -162,34 +155,18 @@ const LeaveRequestDetailScreen = ({ route, navigation }) => {
     });
   };
 
-  // Loading state
-  if (fetchLoading) {
-    return (
-      <SafeAreaView style={[styles.container, styles.centerContent]} edges={['bottom']}>
-        <Header title="Chi tiết đơn xin nghỉ" canGoBack />
-        <ActivityIndicator size="large" color="#4F46E5" />
-        <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
-      </SafeAreaView>
-    );
-  }
-
-  // Error state
-  if (error || !requestDetail) {
-    return (
-      <SafeAreaView style={[styles.container, styles.centerContent]} edges={['bottom']}>
-        <Header title="Chi tiết đơn xin nghỉ" canGoBack />
-        <Icon name="error-outline" size={64} color="#EF4444" />
-        <Text style={styles.errorText}>{error || 'Không tìm thấy đơn xin nghỉ'}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchRequestDetail}>
-          <Text style={styles.retryButtonText}>Thử lại</Text>
-        </TouchableOpacity>
-      </SafeAreaView>
-    );
-  }
+  const calculateOvertimePay = () => {
+    const hourlyRate = 150000; // Giả sử định mức lương giờ
+    const weekendRate = hourlyRate * 2; // Cuối tuần x2
+    const holidayRate = hourlyRate * 3; // Lễ x3
+    
+    // Giả sử ngày thường
+    return requestDetail.totalHours * hourlyRate;
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <Header title="Chi tiết đơn xin nghỉ" canGoBack />
+      <Header title="Chi tiết đơn làm thêm giờ" canGoBack />
 
       <ScrollView
         style={styles.scrollView}
@@ -221,12 +198,17 @@ const LeaveRequestDetailScreen = ({ route, navigation }) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Thông tin đơn xin nghỉ</Text>
+          <Text style={styles.sectionTitle}>Thông tin làm thêm giờ</Text>
           <View style={styles.sectionContent}>
-            <InfoRow icon="event-busy" label="Loại nghỉ" value={requestDetail.leaveType} />
-            <InfoRow icon="date-range" label="Từ ngày" value={requestDetail.startDate} />
-            <InfoRow icon="date-range" label="Đến ngày" value={requestDetail.endDate} />
-            <InfoRow icon="schedule" label="Tổng số ngày" value={`${requestDetail.totalDays} ngày`} />
+            <InfoRow icon="event" label="Ngày làm" value={requestDetail.date} />
+            <InfoRow icon="access-time" label="Thời gian" value={`${requestDetail.startTime} - ${requestDetail.endTime}`} />
+            <InfoRow icon="schedule" label="Tổng giờ" value={`${requestDetail.totalHours} giờ`} />
+            <InfoRow 
+              icon="attach-money" 
+              label="Tính lương" 
+              value={`${calculateOvertimePay().toLocaleString('vi-VN')} VNĐ`} 
+              color="#10B981"
+            />
             <View style={styles.reasonContainer}>
               <Text style={styles.reasonLabel}>Lý do:</Text>
               <Text style={styles.reasonText}>{requestDetail.reason}</Text>
@@ -236,17 +218,23 @@ const LeaveRequestDetailScreen = ({ route, navigation }) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Số ngày nghỉ còn lại</Text>
+          <Text style={styles.sectionTitle}>Thống kê làm thêm giờ</Text>
           <View style={styles.sectionContent}>
             <InfoRow 
-              icon="beach-access" 
-              label="Nghỉ phép năm" 
-              value={`${requestDetail.leaveBalance.annualLeave - requestDetail.leaveBalance.usedAnnualLeave}/${requestDetail.leaveBalance.annualLeave} ngày`} 
+              icon="date-range" 
+              label="Tháng này" 
+              value={`${requestDetail.overtimeStats.thisMonth} giờ`} 
             />
             <InfoRow 
-              icon="healing" 
-              label="Nghỉ ốm" 
-              value={`${requestDetail.leaveBalance.sickLeave - requestDetail.leaveBalance.usedSickLeave}/${requestDetail.leaveBalance.sickLeave} ngày`} 
+              icon="today" 
+              label="Tổng năm" 
+              value={`${requestDetail.overtimeStats.totalYear} giờ`} 
+            />
+            <InfoRow 
+              icon="warning" 
+              label="Giới hạn năm" 
+              value={`${requestDetail.overtimeStats.maxAllowed} giờ`} 
+              color={requestDetail.overtimeStats.totalYear >= requestDetail.overtimeStats.maxAllowed ? '#EF4444' : '#4B5563'}
             />
           </View>
         </View>
@@ -359,35 +347,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
-  },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginTop: 16,
-    marginBottom: 24,
-    paddingHorizontal: 32,
-  },
-  retryButton: {
-    backgroundColor: '#4F46E5',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
   header: {
     backgroundColor: '#4F46E5',
@@ -596,4 +555,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LeaveRequestDetailScreen;
+export default OvertimeRequestDetailScreen;

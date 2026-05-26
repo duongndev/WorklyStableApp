@@ -11,15 +11,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import Header from '../../components/common/Header';
-import StatusFilter from '../../components/common/StatusFilter';
-import AdminRequestCard from '../../components/admin/AdminRequestCard';
-import RejectModal from '../../components/admin/RejectModal';
-import { getAllOvertimeRequestsApi, approveOvertimeRequestApi, rejectOvertimeRequestApi } from '../../api/admin.api';
+import Header from '../../../components/common/Header';
+import StatusFilter from '../../../components/common/StatusFilter';
+import { useStatusFilter } from '../../../hooks/useStatusFilter';
+import { LEAVE_STATUS_FILTERS } from '../../../utils/filterConfigs';
+import AdminRequestCard from '../../../components/admin/AdminRequestCard';
+import RejectModal from '../../../components/admin/RejectModal';
+import { getAllLeaveRequestsApi, approveLeaveRequestApi, rejectLeaveRequestApi } from '../../../api/admin.api';
 
-const OvertimeRequestsListScreen = ({ navigation }) => {
+const LeaveRequestsListScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -27,7 +28,7 @@ const OvertimeRequestsListScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [overtimeRequests, setOvertimeRequests] = useState([]);
+  const [leaveRequests, setLeaveRequests] = useState([]);
 
   // Fallback data for demo
   const fallbackData = [
@@ -36,87 +37,88 @@ const OvertimeRequestsListScreen = ({ navigation }) => {
       employeeName: 'Nguyễn Văn A',
       employeeId: 'NV001',
       department: 'Kỹ thuật',
-      date: '2024-03-20',
-      startTime: '18:00',
-      endTime: '22:00',
-      totalHours: 4,
-      reason: 'Hoàn thành dự án khách hàng gấp, cần thêm thời gian để hoàn thành features còn thiếu',
+      leaveType: 'Nghỉ ốm',
+      startDate: '2024-03-20',
+      endDate: '2024-03-22',
+      totalDays: 3,
+      reason: 'Sốt cao và cần thời gian nghỉ ngơi',
       status: 'pending',
-      createdAt: '2024-03-18T14:30:00',
+      createdAt: '2024-03-18T10:30:00',
     },
     {
       id: 2,
       employeeName: 'Trần Thị B',
       employeeId: 'NV002',
       department: 'Nhân sự',
-      date: '2024-03-19',
-      startTime: '17:30',
-      endTime: '20:30',
-      totalHours: 3,
-      reason: 'Xử lý báo cáo tháng 3 và chuẩn bị tài liệu cho cuộc họp board',
+      leaveType: 'Nghỉ phép năm',
+      startDate: '2024-03-25',
+      endDate: '2024-03-26',
+      totalDays: 2,
+      reason: 'Gia đình có việc quan trọng',
       status: 'approved',
       approvedBy: 'Admin',
-      approvedAt: '2024-03-18T16:20:00',
+      approvedAt: '2024-03-18T14:20:00',
     },
     {
       id: 3,
       employeeName: 'Lê Văn C',
       employeeId: 'NV003',
       department: 'Kinh doanh',
-      date: '2024-03-18',
-      startTime: '17:00',
-      endTime: '21:00',
-      totalHours: 4,
-      reason: 'Gặp gỡ khách hàng quan trọng sau giờ làm việc',
+      leaveType: 'Nghỉ không lương',
+      startDate: '2024-03-28',
+      endDate: '2024-03-29',
+      totalDays: 2,
+      reason: 'Cần xử lý việc cá nhân',
       status: 'rejected',
       rejectedBy: 'Admin',
-      rejectedReason: 'Không có thông báo trước và không được cấp trên duyệt',
-      rejectedAt: '2024-03-17T18:45:00',
+      rejectedReason: 'Không đủ điều kiện nghỉ không lương',
+      rejectedAt: '2024-03-17T16:45:00',
     },
   ];
 
-  const fetchOvertimeRequests = useCallback(async () => {
+  const fetchLeaveRequests = useCallback(async () => {
     try {
       setError(null);
-      const response = await getAllOvertimeRequestsApi();
+      const response = await getAllLeaveRequestsApi();
       if (response.success) {
-        setOvertimeRequests(response.data || []);
+        setLeaveRequests(response.data || []);
       } else {
-        setOvertimeRequests(fallbackData);
+        setLeaveRequests(fallbackData);
       }
     } catch (err) {
-      console.log('Error fetching overtime requests:', err);
+      console.log('Error fetching leave requests:', err);
       setError('Không thể tải dữ liệu. Hiển thị dữ liệu mẫu.');
-      setOvertimeRequests(fallbackData);
+      setLeaveRequests(fallbackData);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchOvertimeRequests();
-  }, [fetchOvertimeRequests]);
+    fetchLeaveRequests();
+  }, [fetchLeaveRequests]);
 
-  const filters = [
-    { key: 'all', label: 'Tất cả', count: overtimeRequests.length },
-    { key: 'pending', label: 'Chờ duyệt', count: overtimeRequests.filter(r => r.status === 'pending').length },
-    { key: 'approved', label: 'Đã duyệt', count: overtimeRequests.filter(r => r.status === 'approved').length },
-    { key: 'rejected', label: 'Đã từ chối', count: overtimeRequests.filter(r => r.status === 'rejected').length },
-  ];
+  // Use the custom hook for status filtering
+  const {
+    selectedFilter,
+    filters,
+    filteredData: filteredByStatus,
+    handleFilterSelect
+  } = useStatusFilter(LEAVE_STATUS_FILTERS, leaveRequests, 'status');
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetchOvertimeRequests();
-    setRefreshing(false);
-  }, [fetchOvertimeRequests]);
-
-  const filteredRequests = overtimeRequests.filter(request => {
-    const matchesFilter = selectedFilter === 'all' || request.status === selectedFilter;
+  // Apply search filter
+  const filteredRequests = filteredByStatus.filter(request => {
     const matchesSearch = request.employeeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          request.employeeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          request.department.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
+    return matchesSearch;
   });
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchLeaveRequests();
+    setRefreshing(false);
+  }, [fetchLeaveRequests]);
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -139,22 +141,22 @@ const OvertimeRequestsListScreen = ({ navigation }) => {
   const handleApprove = async (requestId) => {
     Alert.alert(
       'Xác nhận duyệt',
-      'Bạn có chắc chắn muốn duyệt đơn làm thêm giờ này?',
+      'Bạn có chắc chắn muốn duyệt đơn xin nghỉ này?',
       [
         { text: 'Hủy', style: 'cancel' },
         {
           text: 'Duyệt',
           onPress: async () => {
             try {
-              await approveOvertimeRequestApi(requestId);
-              setOvertimeRequests(prev => prev.map(req =>
+              await approveLeaveRequestApi(requestId);
+              setLeaveRequests(prev => prev.map(req =>
                 req.id === requestId
                   ? { ...req, status: 'approved', approvedBy: 'Admin', approvedAt: new Date().toISOString() }
                   : req
               ));
-              Alert.alert('Thành công', 'Đơn làm thêm giờ đã được duyệt');
+              Alert.alert('Thành công', 'Đơn xin nghỉ đã được duyệt');
             } catch (err) {
-              console.log('Error approving overtime request:', err);
+              console.log('Error approving leave request:', err);
               Alert.alert('Lỗi', 'Không thể duyệt đơn. Vui lòng thử lại.');
             }
           },
@@ -175,8 +177,8 @@ const OvertimeRequestsListScreen = ({ navigation }) => {
     }
 
     try {
-      await rejectOvertimeRequestApi(selectedRequest.id, rejectReason);
-      setOvertimeRequests(prev => prev.map(req =>
+      await rejectLeaveRequestApi(selectedRequest.id, rejectReason);
+      setLeaveRequests(prev => prev.map(req =>
         req.id === selectedRequest.id
           ? { ...req, status: 'rejected', rejectedBy: 'Admin', rejectedReason: rejectReason, rejectedAt: new Date().toISOString() }
           : req
@@ -185,9 +187,9 @@ const OvertimeRequestsListScreen = ({ navigation }) => {
       setShowRejectModal(false);
       setRejectReason('');
       setSelectedRequest(null);
-      Alert.alert('Thành công', 'Đơn làm thêm giờ đã bị từ chối');
+      Alert.alert('Thành công', 'Đơn xin nghỉ đã bị từ chối');
     } catch (err) {
-      console.log('Error rejecting overtime request:', err);
+      console.log('Error rejecting leave request:', err);
       Alert.alert('Lỗi', 'Không thể từ chối đơn. Vui lòng thử lại.');
     }
   };
@@ -204,7 +206,7 @@ const OvertimeRequestsListScreen = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <Header title="Đơn làm thêm giờ" canGoBack />
+      <Header title="Đơn xin nghỉ phép" canGoBack />
       
       {error && (
         <View style={styles.errorBanner}>
@@ -229,7 +231,7 @@ const OvertimeRequestsListScreen = ({ navigation }) => {
       <StatusFilter
         filters={filters}
         selectedFilter={selectedFilter}
-        onSelectFilter={setSelectedFilter}
+        onSelectFilter={handleFilterSelect}
       />
 
       <FlatList
@@ -238,12 +240,12 @@ const OvertimeRequestsListScreen = ({ navigation }) => {
         renderItem={({ item }) => (
           <AdminRequestCard
             item={item}
-            onPress={() => navigation.navigate('OvertimeRequestDetail', { requestId: item.id })}
+            onPress={() => navigation.navigate('LeaveRequestDetail', { requestId: item.id })}
             onApprove={() => handleApprove(item.id)}
             onReject={() => handleReject(item)}
             details={[
-              { icon: 'event', text: item.date },
-              { icon: 'access-time', text: `${item.startTime} - ${item.endTime} (${item.totalHours} giờ)` },
+              { icon: 'event', text: item.leaveType },
+              { icon: 'date-range', text: `${item.startDate} → ${item.endDate} (${item.totalDays} ngày)` },
               { icon: 'description', text: item.reason, numberOfLines: 2 },
             ]}
           />
@@ -254,7 +256,7 @@ const OvertimeRequestsListScreen = ({ navigation }) => {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Icon name="access-time" size={64} color="#E5E7EB" />
+            <Icon name="event-busy" size={64} color="#E5E7EB" />
             <Text style={styles.emptyText}>Không có yêu cầu nào</Text>
           </View>
         }
@@ -266,7 +268,7 @@ const OvertimeRequestsListScreen = ({ navigation }) => {
         onConfirm={confirmReject}
         rejectReason={rejectReason}
         setRejectReason={setRejectReason}
-        title="Từ chối đơn làm thêm giờ"
+        title="Từ chối đơn xin nghỉ"
       />
     </SafeAreaView>
   );
@@ -336,4 +338,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default OvertimeRequestsListScreen;
+export default LeaveRequestsListScreen;

@@ -3,9 +3,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../context/ThemeContext';
 
-import AdminDashboardScreen from '../screens/admin/AdminDashboardScreen';
-import LeaveRequestsListScreen from '../screens/admin/LeaveRequestsListScreen';
-import OvertimeRequestsListScreen from '../screens/admin/OvertimeRequestsListScreen';
+import AdminDashboardScreen from '../screens/admin/dashboard/AdminDashboardScreen';
+import LeaveRequestsListScreen from '../screens/admin/leave/LeaveRequestsListScreen';
+import OvertimeRequestsListScreen from '../screens/admin/overtime/OvertimeRequestsListScreen';
 import ProfileScreen from '../screens/employee/profile/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
